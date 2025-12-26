@@ -5,17 +5,35 @@ import { invoke, Channel } from "@tauri-apps/api/core";
 
 let ws = new WebSocket("ws://localhost:5237/ws");
 ws.addEventListener('message', (event) => {
-  alert(event.data);
+  let msg = JSON.parse(event.data);
+  if ('client_id' in msg) {
+    console.log('Connected with client id:', msg.client_id);
+    return;
+  }
+  alert((msg as Message).payload);
+});
+ws.addEventListener('open', () => {
+  const command = JSON.stringify({
+    command: {
+      "Subscribe": "messages"
+    }
+  });
+  ws.send(command);
 });
 
 window.addEventListener('close', () => {
   ws.close();
 });
 
+interface Message {
+  topic: string;
+  payload: string;
+}
+
 async function connect(topic: string) {
-  const onEvent = new Channel<string>();
+  const onEvent = new Channel<Message>();
   onEvent.onmessage = (message) => {
-    alert(message);
+    alert(message.payload);
   };
   await invoke('connect_to_events', { topic, onEvent });
 }

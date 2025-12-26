@@ -26,3 +26,4 @@ axum = { version = "0.8.8", features = ["ws", "default"] }
 tokio = "1.48.0"
 futures = "0.3.31"
 rustls = { version = "0.23.35", features = ["ring"] }
+uuid = { version = "1.19.0", features = ["v4", "v7"] }
