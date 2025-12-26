@@ -1,27 +1,30 @@
 mod subscription_manager;
+mod opentelemetry;
 
 use std::collections::{HashMap};
+use std::ops::Deref;
 use std::sync::{Arc};
+use axum::body::{Body, Bytes};
 use axum::extract::{Query, State, WebSocketUpgrade};
 use axum::extract::ws::{Message, Utf8Bytes, WebSocket};
-use axum::http::{StatusCode};
-use axum::response::IntoResponse;
+use axum::http::{request, StatusCode};
+use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Router;
 use serde::{Deserialize, Serialize};
 use tauri::{Emitter, Manager};
 use tauri::ipc::Channel;
 use futures::{SinkExt, StreamExt};
+use prost::Message as ProstMessage;
 use uuid::{Uuid};
 use tokio::sync::{RwLock};
 use crate::subscription_manager::{Message as Msg, SubscriptionManager, Topic};
-
+use crate::opentelemetry::proto::collector::logs::v1::{ExportLogsServiceRequest, ExportLogsServiceResponse};
 
 #[derive(Clone)]
 struct AppState {
     subscription_manager: Arc<RwLock<SubscriptionManager>>
 }
-
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -49,11 +52,18 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
+fn get_otlp_routes() -> Router<AppState> {
+    let otlp_routes = Router::new()
+        .route("/logs", post(handle_logs));
+    otlp_routes
+}
+
 async fn init_axum(state: AppState) -> Result<(), Box<dyn std::error::Error>> {
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:5237").await?;
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:4318").await?;
     let app = Router::new()
         .route("/", post(post_handle))
         .route("/ws", get(websocket_handler))
+        .nest("/v1", get_otlp_routes())
         .with_state(state);
     axum::serve(listener, app).await?;
     Ok(())
@@ -72,6 +82,30 @@ async fn post_handle(State(state): State<AppState>, query: Query<MessageQuery>) 
         Ok(clients) => (StatusCode::ACCEPTED, format!("Clients: {}", clients)).into_response(),
         Err(_) =>  (StatusCode::BAD_REQUEST, "Unable to dispatch the message.").into_response(),
     }
+}
+
+// Resources:
+// Proto: https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/collector/logs/v1/logs_service.proto
+// Collector-Go: https://github.com/open-telemetry/opentelemetry-collector/blob/main/receiver/otlpreceiver/otlphttp.go
+// Aspire-Dashboard-C#: https://github.com/dotnet/aspire/blob/main/src/Aspire.Dashboard/Otlp/Http/OtlpHttpEndpointsBuilder.cs
+async fn handle_logs(request: axum::extract::Request) -> impl IntoResponse {
+    let content_type = request.headers().get("content-type").unwrap().to_str().unwrap();
+    // use content type to determine if protobuf or json.
+    let body = match axum::body::to_bytes(request.into_body(), usize::MAX).await {
+        Ok(bytes) => bytes,
+        Err(_) => return (StatusCode::BAD_REQUEST, "Failed to read request body").into_response(),
+    };
+    let request = ExportLogsServiceRequest::decode(body).unwrap();
+    println!("Received request: {:?}", request);
+
+    let mut bytes = Vec::new();
+    let export_logs_response = ExportLogsServiceResponse::default();
+    ExportLogsServiceResponse::encode(&export_logs_response, &mut bytes).unwrap();
+    Response::builder()
+        .status(StatusCode::OK)
+        .header("content-type", "application/x-protobuf")
+        .body(bytes.into())
+        .unwrap()
 }
 
 async fn websocket_handler(ws: WebSocketUpgrade, State(state): State<AppState>) -> impl IntoResponse {

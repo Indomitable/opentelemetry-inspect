@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using OpenTelemetry;
+using OpenTelemetry.Exporter;
 using OpenTelemetry.Resources;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,7 +18,7 @@ builder.Services.AddOpenTelemetry()
         tb.AddSource(activitySourceName);
     })
     .WithLogging()
-    .UseOtlpExporter();
+    .UseOtlpExporter(OtlpExportProtocol.HttpProtobuf, new Uri("http://127.0.0.1:4318"));
 
 builder.Services.AddSingleton<ActivitySource>(_ =>  new ActivitySource(activitySourceName));
     

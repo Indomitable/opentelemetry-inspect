@@ -15,6 +15,7 @@ name = "opentelemetry_inspect_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
+prost-build = "0.14.1"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
@@ -27,3 +28,5 @@ tokio = "1.48.0"
 futures = "0.3.31"
 rustls = { version = "0.23.35", features = ["ring"] }
 uuid = { version = "1.19.0", features = ["v4", "v7"] }
+prost = "0.14.1"
+prost-types = "0.14.1"

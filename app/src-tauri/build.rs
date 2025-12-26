@@ -1,3 +1,9 @@
-fn main() {
-    tauri_build::build()
+fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+    prost_build::compile_protos(&[
+        "opentelemetry/proto/logs/v1/logs.proto",
+        "opentelemetry/proto/collector/logs/v1/logs_service.proto",
+        "opentelemetry/proto/metrics/v1/metrics.proto",
+        "opentelemetry/proto/trace/v1/trace.proto"], &["."])?;
+    tauri_build::build();
+    Ok(())
 }
