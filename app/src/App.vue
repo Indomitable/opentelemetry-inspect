@@ -1,31 +1,51 @@
 <script setup lang="ts">
 
-let ws = new WebSocket("ws://localhost:5237/ws");
-ws.addEventListener('message', (event) => {
-  let msg = JSON.parse(event.data);
-  if ('client_id' in msg) {
-    console.log('Connected with client id:', msg.client_id);
-    return;
-  }
-  alert((msg as Message).payload);
-});
-ws.addEventListener('open', () => {
-  const command = JSON.stringify({
-    command: {
-      "Subscribe": "logs"
-    }
-  });
-  ws.send(command);
-});
-
-window.addEventListener('close', () => {
-  ws.close();
-});
+import { onMounted, onUnmounted } from 'vue';
+import { addLog } from './store';
 
 interface Message {
   topic: string;
   payload: string;
 }
+
+let ws: WebSocket | null = null;
+
+onMounted(() => {
+  ws = new WebSocket("ws://localhost:4318/ws");
+
+  ws.addEventListener('message', (event) => {
+    let msg = JSON.parse(event.data);
+    if ('client_id' in msg) {
+      console.log('Connected with client id:', msg.client_id);
+      return;
+    }
+    
+    const message = msg as Message;
+    if (message.topic === 'logs') {
+      try {
+        const logData = JSON.parse(message.payload);
+        addLog(logData);
+      } catch (e) {
+        console.error('Failed to parse log payload', e);
+      }
+    }
+  });
+
+  ws.addEventListener('open', () => {
+    const command = JSON.stringify({
+      command: {
+        "Subscribe": "logs"
+      }
+    });
+    ws?.send(command);
+  });
+});
+
+onUnmounted(() => {
+  if (ws) {
+    ws.close();
+  }
+});
 
 
 </script>
