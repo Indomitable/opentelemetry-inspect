@@ -34,6 +34,34 @@ const filteredLogs = computed(() => {
 
   return logs;
 });
+
+const getLogLevelClass = (logLevel: string) => {
+  switch (logLevel.toLowerCase()) {
+    case "info":
+    case "information": {
+      return "info";
+    }
+    case "warn":
+    case "warning": {
+      return "warn";
+    }
+    case "error": {
+      return "error";
+    }
+    case "critical":
+    case "fatal": {
+      return "critical";
+    }
+    case "debug":
+    case "trace": {
+      return "debug";
+    }
+    default: {
+      return "";
+    }
+  }
+}
+
 </script>
 
 <template>
@@ -77,7 +105,7 @@ const filteredLogs = computed(() => {
         </Column>
         <Column field="log_level" header="Level" sortable :style="{ width: '120px' }">
           <template #body="slotProps">
-            <span :class="['level', slotProps.data.log_level.toLowerCase()]">
+            <span :class="['level', getLogLevelClass(slotProps.data.log_level)]">
               {{ slotProps.data.log_level }}
             </span>
           </template>
@@ -88,7 +116,7 @@ const filteredLogs = computed(() => {
     </div>
 
     <Transition name="slide">
-      <div v-if="selectedLog" class="details-panel">
+      <section v-if="selectedLog" class="details-panel">
         <div class="details-header">
           <button class="close-btn" @click="selectedLog = null">×</button>
           <h2>Log Details</h2>
@@ -107,7 +135,9 @@ const filteredLogs = computed(() => {
             </div>
             <div class="details-row">
               <div>Level</div>
-              <div>{{ selectedLog.log_level }}</div>
+              <div :class="['level', getLogLevelClass(selectedLog!.log_level)]">
+                {{ selectedLog.log_level }}
+              </div>
             </div>
             <div class="details-row">
               <div>Scope</div>
@@ -155,7 +185,7 @@ const filteredLogs = computed(() => {
             </div>
           </div>
         </div>
-      </div>
+      </section>
     </Transition>
   </div>
 </template>
@@ -213,6 +243,7 @@ const filteredLogs = computed(() => {
 
 .level.info { color: #2196f3; }
 .level.error { color: #f44336; }
+.level.critical { color: #d32f2f; }
 .level.warn { color: #ff9800; }
 .level.debug { color: #9c27b0; }
 

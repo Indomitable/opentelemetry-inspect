@@ -21,9 +21,12 @@ builder.Services.AddOpenTelemetry()
     .UseOtlpExporter(OtlpExportProtocol.HttpProtobuf, new Uri("http://127.0.0.1:4318"));
 
 builder.Services.AddSingleton<ActivitySource>(_ =>  new ActivitySource(activitySourceName));
-    
+
 
 var app = builder.Build();
+
+var logger = app.Services.GetRequiredService<ILogger<WeatherForecast>>();
+logger.LogCritical("Application has been built.");
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -55,6 +58,7 @@ app.MapGet("/weatherforecast", (ActivitySource activitySource, ILogger<WeatherFo
 })
 .WithName("GetWeatherForecast");
 
+logger.LogError("Starting application.");
 app.Run();
 
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)

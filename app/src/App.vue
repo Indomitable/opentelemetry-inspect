@@ -52,7 +52,7 @@ onUnmounted(() => {
 
 <template>
   <div class="app-layout">
-    <aside class="sidebar">
+    <nav class="sidebar">
       <router-link to="/" title="Summary" class="nav-link">
         <span class="icon">📊</span>
       </router-link>
@@ -65,7 +65,7 @@ onUnmounted(() => {
       <router-link to="/metrics" title="Metrics" class="nav-link">
         <span class="icon">📈</span>
       </router-link>
-    </aside>
+    </nav>
     <main class="content">
       <router-view />
     </main>

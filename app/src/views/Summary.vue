@@ -8,7 +8,9 @@ import { state } from '../store';
     <div class="stats-grid">
       <div class="stat-card">
         <h3>Total Logs</h3>
-        <p class="stat-value">{{ state.totalLogs }}</p>
+        <router-link to="/logs" class="stat-value">
+          {{ state.totalLogs }}
+        </router-link>
       </div>
     </div>
   </div>
@@ -46,5 +48,6 @@ import { state } from '../store';
   font-weight: bold;
   margin: 10px 0 0;
   color: #535bf2;
+  text-decoration: none;
 }
 </style>
