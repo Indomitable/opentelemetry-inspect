@@ -1,58 +1,15 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { state, type LogDto } from '../store';
+import DataTable from 'primevue/datatable';
+import Column from 'primevue/column';
+import Select from 'primevue/select';
 
 const selectedLog = ref<LogDto | null>(null);
 const selectedInstanceId = ref<string>('');
-const sortOrder = ref<'asc' | 'desc'>('desc');
 
-const columnWidths = ref({
-  timestamp: 220,
-  level: 120,
-  scope: 150,
-});
-
-const gridStyle = computed(() => {
-  return {
-    display: 'grid',
-    gridTemplateColumns: `${columnWidths.value.timestamp}px ${columnWidths.value.level}px ${columnWidths.value.scope}px 1fr`,
-  };
-});
-
-let isResizing = false;
-let currentColumn = '';
-let startX = 0;
-let startWidth = 0;
-
-const startResize = (column: 'timestamp' | 'level' | 'scope', event: MouseEvent) => {
-  isResizing = true;
-  currentColumn = column;
-  startX = event.pageX;
-  startWidth = columnWidths.value[column];
-  
-  document.addEventListener('mousemove', handleMouseMove);
-  document.addEventListener('mouseup', stopResize);
-  document.body.style.cursor = 'col-resize';
-};
-
-const handleMouseMove = (event: MouseEvent) => {
-  if (!isResizing) return;
-  const diff = event.pageX - startX;
-  const newWidth = Math.max(50, startWidth + diff);
-  if (currentColumn === 'timestamp' || currentColumn === 'level' || currentColumn === 'scope') {
-    columnWidths.value[currentColumn] = newWidth;
-  }
-};
-
-const stopResize = () => {
-  isResizing = false;
-  document.removeEventListener('mousemove', handleMouseMove);
-  document.removeEventListener('mouseup', stopResize);
-  document.body.style.cursor = '';
-};
-
-const selectLog = (log: LogDto) => {
-  selectedLog.value = log;
+const selectLog = (event: { data: LogDto }) => {
+  selectedLog.value = event.data;
 };
 
 const formatDate = (dateStr: string) => {
@@ -61,28 +18,22 @@ const formatDate = (dateStr: string) => {
 
 const instanceIds = computed(() => {
   const ids = new Set(state.logs.map(log => log.resource.service_instance_id));
-  return Array.from(ids).sort();
+  return Array.from(ids).sort().map(id => ({ label: id, value: id }));
 });
 
-const filteredAndSortedLogs = computed(() => {
+const instanceOptions = computed(() => {
+  return [{ label: 'All Instances', value: '' }, ...instanceIds.value];
+});
+
+const filteredLogs = computed(() => {
   let logs = [...state.logs];
 
   if (selectedInstanceId.value) {
     logs = logs.filter(log => log.resource.service_instance_id === selectedInstanceId.value);
   }
 
-  logs.sort((a, b) => {
-    const dateA = new Date(a.timestamp).getTime();
-    const dateB = new Date(b.timestamp).getTime();
-    return sortOrder.value === 'asc' ? dateA - dateB : dateB - dateA;
-  });
-
   return logs;
 });
-
-const toggleSort = () => {
-  sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc';
-};
 </script>
 
 <template>
@@ -92,45 +43,48 @@ const toggleSort = () => {
         <h1>Logs</h1>
         <div class="filters">
           <label for="instance-filter">Instance ID:</label>
-          <select id="instance-filter" v-model="selectedInstanceId">
-            <option value="">All Instances</option>
-            <option v-for="id in instanceIds" :key="id" :value="id">{{ id }}</option>
-          </select>
+          <Select 
+            id="instance-filter" 
+            v-model="selectedInstanceId" 
+            :options="instanceOptions" 
+            optionLabel="label" 
+            optionValue="value" 
+            placeholder="Select Instance"
+            size="small"
+          />
         </div>
       </div>
-      <div class="table">
-        <div class="table-header" :style="gridStyle">
-          <div class="col timestamp sortable" @click="toggleSort">
-            Timestamp
-            <span class="sort-icon">{{ sortOrder === 'asc' ? '▲' : '▼' }}</span>
-            <div class="resizer" @mousedown.stop="startResize('timestamp', $event)"></div>
-          </div>
-          <div class="col level">
-            Level
-            <div class="resizer" @mousedown.stop="startResize('level', $event)"></div>
-          </div>
-          <div class="col scope">
-            Scope
-            <div class="resizer" @mousedown.stop="startResize('scope', $event)"></div>
-          </div>
-          <div class="col message">Message</div>
-        </div>
-        <div class="table-body">
-          <div 
-            v-for="(log, index) in filteredAndSortedLogs" 
-            :key="index" 
-            class="table-row" 
-            :class="{ active: selectedLog === log }"
-            :style="gridStyle"
-            @click="selectLog(log)"
-          >
-            <div class="col timestamp">{{ formatDate(log.timestamp) }}</div>
-            <div class="col level" :class="log.log_level.toLowerCase()">{{ log.log_level }}</div>
-            <div class="col scope">{{ log.scope }}</div>
-            <div class="col message">{{ log.log_message }}</div>
-          </div>
-        </div>
-      </div>
+      
+      <DataTable 
+        v-model:selection="selectedLog" 
+        :value="filteredLogs" 
+        selectionMode="single" 
+        @row-select="selectLog"
+        dataKey="timestamp" 
+        :scrollable="true" 
+        scrollHeight="flex"
+        resizableColumns 
+        columnResizeMode="fit"
+        sortField="timestamp" 
+        :sortOrder="-1"
+        class="p-datatable-sm custom-table"
+      >
+        <template #empty><div class="custom-table__empty">No logs recorded.</div></template>
+        <Column field="timestamp" header="Timestamp" sortable :style="{ width: '220px' }">
+          <template #body="slotProps">
+            {{ formatDate(slotProps.data.timestamp) }}
+          </template>
+        </Column>
+        <Column field="log_level" header="Level" sortable :style="{ width: '120px' }">
+          <template #body="slotProps">
+            <span :class="['level', slotProps.data.log_level.toLowerCase()]">
+              {{ slotProps.data.log_level }}
+            </span>
+          </template>
+        </Column>
+        <Column field="scope" header="Scope" sortable :style="{ width: '150px' }"></Column>
+        <Column field="log_message" header="Message" sortable></Column>
+      </DataTable>
     </div>
 
     <Transition name="slide">
@@ -234,143 +188,28 @@ const toggleSort = () => {
   gap: 10px;
 }
 
-.filters select {
-  padding: 5px 10px;
-  border-radius: 4px;
-  border: 1px solid #ddd;
-  background: #fff;
-  height: 25px;
-}
-
-@media (prefers-color-scheme: dark) {
-  .filters select {
-    background: #2a2a2a;
-    border-color: #444;
-    color: #eee;
-  }
-}
-
 .logs-container.with-details {
   flex: 0 0 60%;
   padding-right: 15px;
 }
 
-.table {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
+.custom-table {
   border: 1px solid #ddd;
   border-radius: 4px;
   overflow: hidden;
-  background: #fff;
 }
 
 @media (prefers-color-scheme: dark) {
-  .table {
-    background: #1e1e1e;
+  .custom-table {
     border-color: #444;
   }
 }
 
-.table-header {
-  background: #f4f4f4;
-  font-weight: bold;
-  border-bottom: 1px solid #ddd;
+.custom-table__empty {
+  text-align: center;
+  height: 40px;
+  line-height: 40px;
 }
-
-.table-header .col {
-  position: relative;
-}
-
-.resizer {
-  position: absolute;
-  right: 0;
-  top: 0;
-  width: 5px;
-  height: 100%;
-  cursor: col-resize;
-  z-index: 1;
-}
-
-.resizer:hover {
-  background-color: #535bf2;
-}
-
-@media (prefers-color-scheme: dark) {
-  .table-header {
-    background: #333;
-    border-color: #444;
-  }
-}
-
-.table-body {
-  overflow-y: auto;
-  flex: 1;
-}
-
-.table-row {
-  border-bottom: 1px solid #eee;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-@media (prefers-color-scheme: dark) {
-  .table-row {
-    border-bottom-color: #333;
-  }
-}
-
-.table-row:hover {
-  background: #f9f9f9;
-}
-
-@media (prefers-color-scheme: dark) {
-  .table-row:hover {
-    background: #2a2a2a;
-  }
-}
-
-.table-row.active {
-  background: #eef2ff;
-}
-
-@media (prefers-color-scheme: dark) {
-  .table-row.active {
-    background: #31356e;
-  }
-}
-
-.col {
-  padding: 10px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.timestamp.sortable {
-  cursor: pointer;
-  user-select: none;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.timestamp.sortable:hover {
-  background: #eee;
-}
-
-@media (prefers-color-scheme: dark) {
-  .timestamp.sortable:hover {
-    background: #444;
-  }
-}
-
-.sort-icon {
-  font-size: 0.8em;
-  color: #888;
-}
-
-.message { white-space: normal; }
 
 .level.info { color: #2196f3; }
 .level.error { color: #f44336; }
