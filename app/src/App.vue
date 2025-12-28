@@ -54,16 +54,16 @@ onUnmounted(() => {
   <div class="app-layout">
     <nav class="sidebar">
       <router-link to="/" title="Summary" class="nav-link">
-        <span class="icon">📊</span>
+        <i class="pi pi-objects-column" />
       </router-link>
       <router-link to="/logs" title="Logs" class="nav-link">
-        <span class="icon">📜</span>
+        <i class="pi pi-list" />
       </router-link>
       <router-link to="/traces" title="Traces" class="nav-link">
-        <span class="icon">🛣️</span>
+        <i class="pi pi-align-center"/>
       </router-link>
       <router-link to="/metrics" title="Metrics" class="nav-link">
-        <span class="icon">📈</span>
+        <i class="pi pi-chart-line" />
       </router-link>
     </nav>
     <main class="content">
