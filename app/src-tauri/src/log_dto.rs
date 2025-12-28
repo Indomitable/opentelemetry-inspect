@@ -21,6 +21,7 @@ pub struct ResourceInfo {
     pub service_name: String,
     pub service_version: String,
     pub service_namespace: String,
+    pub service_instance_id: String,
 }
 
 impl LogDto {
@@ -50,6 +51,7 @@ impl LogDto {
             service_name: "unknown_service".to_string(),
             service_version: "unknown".to_string(),
             service_namespace: "unknown".to_string(),
+            service_instance_id: "unknown".to_string(),
         };
 
         if let Some(res) = resource {
@@ -58,6 +60,7 @@ impl LogDto {
                     "service.name" => resource_info.service_name = any_value_to_string(attr.value.clone().unwrap_or_default()),
                     "service.version" => resource_info.service_version = any_value_to_string(attr.value.clone().unwrap_or_default()),
                     "service.namespace" => resource_info.service_namespace = any_value_to_string(attr.value.clone().unwrap_or_default()),
+                    "service.instance.id" => resource_info.service_instance_id = any_value_to_string(attr.value.clone().unwrap_or_default()),
                     _ => {}
                 }
             }

@@ -4,6 +4,7 @@ export interface ResourceInfo {
   service_name: string;
   service_version: string;
   service_namespace: string;
+  service_instance_id: string;
 }
 
 export interface LogDto {

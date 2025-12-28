@@ -118,6 +118,10 @@ onUnmounted(() => {
 }
 </style>
 <style>
+* {
+  box-sizing: border-box;
+}
+
 :root {
   font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
   font-size: 16px;
