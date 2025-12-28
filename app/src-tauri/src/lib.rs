@@ -1,13 +1,12 @@
 mod subscription_manager;
 mod opentelemetry;
+mod log_dto;
 
 use std::collections::{HashMap};
-use std::ops::Deref;
 use std::sync::{Arc};
-use axum::body::{Body, Bytes};
 use axum::extract::{Query, State, WebSocketUpgrade};
 use axum::extract::ws::{Message, Utf8Bytes, WebSocket};
-use axum::http::{request, StatusCode};
+use axum::http::{StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::Router;
@@ -20,6 +19,7 @@ use uuid::{Uuid};
 use tokio::sync::{RwLock};
 use crate::subscription_manager::{Message as Msg, SubscriptionManager, Topic};
 use crate::opentelemetry::proto::collector::logs::v1::{ExportLogsServiceRequest, ExportLogsServiceResponse};
+use crate::log_dto::LogDto;
 
 #[derive(Clone)]
 struct AppState {
@@ -88,15 +88,26 @@ async fn post_handle(State(state): State<AppState>, query: Query<MessageQuery>) 
 // Proto: https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/collector/logs/v1/logs_service.proto
 // Collector-Go: https://github.com/open-telemetry/opentelemetry-collector/blob/main/receiver/otlpreceiver/otlphttp.go
 // Aspire-Dashboard-C#: https://github.com/dotnet/aspire/blob/main/src/Aspire.Dashboard/Otlp/Http/OtlpHttpEndpointsBuilder.cs
-async fn handle_logs(request: axum::extract::Request) -> impl IntoResponse {
-    let content_type = request.headers().get("content-type").unwrap().to_str().unwrap();
-    // use content type to determine if protobuf or json.
+async fn handle_logs(State(state): State<AppState>, request: axum::extract::Request) -> impl IntoResponse {
     let body = match axum::body::to_bytes(request.into_body(), usize::MAX).await {
         Ok(bytes) => bytes,
         Err(_) => return (StatusCode::BAD_REQUEST, "Failed to read request body").into_response(),
     };
     let request = ExportLogsServiceRequest::decode(body).unwrap();
-    println!("Received request: {:?}", request);
+    //println!("Received request: {:?}", request);
+
+    for resource_log in request.resource_logs {
+        let resource = resource_log.resource.as_ref();
+        for scope_log in resource_log.scope_logs {
+            let scope = scope_log.scope.as_ref();
+            for log_record in scope_log.log_records {
+                let dto = LogDto::from_otlp(log_record, scope, resource);
+                let payload = serde_json::to_string(&dto).unwrap();
+                let event = Msg::new("logs", &payload);
+                let _ = state.subscription_manager.read().await.publish(event);
+            }
+        }
+    }
 
     let mut bytes = Vec::new();
     let export_logs_response = ExportLogsServiceResponse::default();
