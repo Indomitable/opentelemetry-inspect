@@ -12,7 +12,6 @@ use axum::routing::{get, post};
 use axum::Router;
 use serde::{Deserialize, Serialize};
 use tauri::{Emitter, Manager};
-use tauri::ipc::Channel;
 use futures::{SinkExt, StreamExt};
 use prost::Message as ProstMessage;
 use uuid::{Uuid};
@@ -47,7 +46,6 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![connect_to_events])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -210,17 +208,4 @@ async fn handle_websocket(socket: WebSocket, state: AppState) {
     state.subscription_manager.write().await.unsubscribe_client(&client_id);
     drop(message_queue_sender);
     let _ = dispatch_handle.await;
-}
-
-#[tauri::command]
-async fn connect_to_events(topic: String, on_event: Channel<Msg>, state: tauri::State<'_, AppState>) -> Result<(), ()> {
-    let client_id = Uuid::now_v7();
-    let mut rx = state.subscription_manager.write().await.subscribe(topic, client_id.to_string());
-    while let Ok(message) = rx.recv().await {
-        let res = on_event.send(message);
-        if res.is_err() {
-            println!("Unable to send event.");
-        }
-    }
-    Ok(())
 }

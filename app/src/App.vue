@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { invoke, Channel } from "@tauri-apps/api/core";
-//import { listen } from '@tauri-apps/api/event';
 
 let ws = new WebSocket("ws://localhost:5237/ws");
 ws.addEventListener('message', (event) => {
@@ -15,7 +13,7 @@ ws.addEventListener('message', (event) => {
 ws.addEventListener('open', () => {
   const command = JSON.stringify({
     command: {
-      "Subscribe": "messages"
+      "Subscribe": "logs"
     }
   });
   ws.send(command);
@@ -30,27 +28,6 @@ interface Message {
   payload: string;
 }
 
-async function connect(topic: string) {
-  const onEvent = new Channel<Message>();
-  onEvent.onmessage = (message) => {
-    alert(message.payload);
-  };
-  await invoke('connect_to_events', { topic, onEvent });
-}
-
-connect('messages');
-
-const greetMsg = ref("");
-const name = ref("");
-
-async function greet() {
-  // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-  greetMsg.value = await invoke("greet", { name: name.value });
-}
-
-// listen('log', () => {
-//   console.log('log event received from backend');
-// });
 
 </script>
 
