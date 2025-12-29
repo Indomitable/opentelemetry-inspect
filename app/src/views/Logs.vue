@@ -8,10 +8,6 @@ import Select from 'primevue/select';
 const selectedLog = ref<LogDto | null>(null);
 const selectedInstanceId = ref<string>('');
 
-const selectLog = (event: { data: LogDto }) => {
-  selectedLog.value = event.data;
-};
-
 const formatDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleString();
 };
@@ -86,14 +82,13 @@ const getLogLevelClass = (logLevel: string) => {
       <DataTable 
         v-model:selection="selectedLog" 
         :value="filteredLogs" 
-        selectionMode="single" 
-        @row-select="selectLog"
-        dataKey="timestamp" 
+        selectionMode="single"
+        dataKey="timestamp"
         :scrollable="true" 
         scrollHeight="flex"
         resizableColumns 
         columnResizeMode="fit"
-        sortField="timestamp" 
+        sortField="timestamp"
         :sortOrder="-1"
         class="p-datatable-sm custom-table"
       >
