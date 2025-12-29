@@ -5,13 +5,17 @@ export interface ResourceInfo {
   service_version: string;
   service_namespace: string;
   service_instance_id: string;
+  attributes: Record<string, string>;
 }
 
 export interface LogDto {
   timestamp: string;
-  log_level: string;
-  log_message: string;
+  severity: string;
+  message: string;
   scope: string;
+  trace_id?: string;
+  span_id?: string;
+  event_name?: string;
   resource: ResourceInfo;
   tags: Record<string, string>;
 }

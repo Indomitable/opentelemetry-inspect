@@ -103,15 +103,15 @@ const getLogLevelClass = (logLevel: string) => {
             {{ formatDate(slotProps.data.timestamp) }}
           </template>
         </Column>
-        <Column field="log_level" header="Level" sortable :style="{ width: '120px' }">
+        <Column field="severity" header="Level" sortable :style="{ width: '120px' }">
           <template #body="slotProps">
-            <span :class="['level', getLogLevelClass(slotProps.data.log_level)]">
-              {{ slotProps.data.log_level }}
+            <span :class="['level', getLogLevelClass(slotProps.data.severity)]">
+              {{ slotProps.data.severity }}
             </span>
           </template>
         </Column>
         <Column field="scope" header="Scope" sortable :style="{ width: '150px' }"></Column>
-        <Column field="log_message" header="Message" sortable></Column>
+        <Column field="message" header="Message" sortable></Column>
       </DataTable>
     </div>
 
@@ -135,8 +135,8 @@ const getLogLevelClass = (logLevel: string) => {
             </div>
             <div class="details-row">
               <div>Level</div>
-              <div :class="['level', getLogLevelClass(selectedLog!.log_level)]">
-                {{ selectedLog.log_level }}
+              <div :class="['level', getLogLevelClass(selectedLog!.severity)]">
+                {{ selectedLog.severity }}
               </div>
             </div>
             <div class="details-row">
@@ -145,7 +145,19 @@ const getLogLevelClass = (logLevel: string) => {
             </div>
             <div class="details-row">
               <div>Message</div>
-              <div>{{ selectedLog.log_message }}</div>
+              <div>{{ selectedLog.message }}</div>
+            </div>
+            <div class="details-row" v-if="selectedLog?.trace_id">
+              <div>Trace Id</div>
+              <div>{{ selectedLog.trace_id }}</div>
+            </div>
+            <div class="details-row" v-if="selectedLog?.span_id">
+              <div>Span Id</div>
+              <div>{{ selectedLog.span_id }}</div>
+            </div>
+            <div class="details-row" v-if="selectedLog?.event_name">
+              <div>Event Name</div>
+              <div>{{ selectedLog.event_name }}</div>
             </div>
           </div>
 
@@ -171,6 +183,10 @@ const getLogLevelClass = (logLevel: string) => {
               <div>Service Instance ID</div>
               <div>{{ selectedLog.resource.service_instance_id }}</div>
             </div>
+            <div v-for="(value, key) in selectedLog!.resource.attributes" :key="key" class="details-row">
+              <div>{{ key }}</div>
+              <div>{{ value }}</div>
+            </div>
           </div>
 
           <h3>Tags</h3>
@@ -179,7 +195,7 @@ const getLogLevelClass = (logLevel: string) => {
               <div>Key</div>
               <div>Value</div>
             </div>
-            <div v-for="(value, key) in selectedLog.tags" :key="key" class="details-row">
+            <div v-for="(value, key) in selectedLog!.tags" :key="key" class="details-row">
               <div>{{ key }}</div>
               <div>{{ value }}</div>
             </div>

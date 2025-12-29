@@ -58,7 +58,7 @@ app.MapGet("/weatherforecast", (ActivitySource activitySource, ILogger<WeatherFo
 })
 .WithName("GetWeatherForecast");
 
-logger.LogError("Starting application.");
+logger.LogError(new Exception("Test Exception"), "Starting application.");
 app.Run();
 
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
