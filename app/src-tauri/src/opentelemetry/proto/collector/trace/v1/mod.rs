@@ -1,0 +1,1 @@
+include!(concat!(env!("OUT_DIR"), "/opentelemetry.proto.collector.trace.v1.rs"));

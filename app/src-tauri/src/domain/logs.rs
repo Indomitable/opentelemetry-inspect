@@ -1,6 +1,7 @@
 use serde::{Serialize};
 use std::collections::HashMap;
 use chrono::{DateTime, Utc, TimeZone};
+use super::traces::{SpanId, TraceId};
 use crate::opentelemetry::proto::logs::v1::LogRecord;
 use crate::opentelemetry::proto::common::v1::{AnyValue, any_value};
 use crate::opentelemetry::proto::resource::v1::Resource;
@@ -25,8 +26,8 @@ pub struct LogDto {
     pub severity: Severity,
     pub message: String,
     pub scope: String,
-    pub trace_id: Option<String>,
-    pub span_id: Option<String>,
+    pub trace_id: Option<TraceId>,
+    pub span_id: Option<SpanId>,
     pub event_name: Option<String>,
     pub resource: ResourceInfo,
     pub tags: HashMap<String, String>,
@@ -58,8 +59,8 @@ impl LogDto {
         let severity = get_severity(&record);
         let log_message = record.body.map(|b| any_value_to_string(b)).unwrap_or_default();
         let scope_name = scope.map(|s| s.name.clone()).unwrap_or_default();
-        let trace_id = if is_valid_trace_id(&record.trace_id) { Some(bytes_to_hex(&record.trace_id)) } else { None };
-        let span_id = if is_valid_span_id(&record.span_id) { Some(bytes_to_hex(&record.span_id)) } else { None };
+        let trace_id = TraceId::try_from(&record.trace_id).ok();
+        let span_id = SpanId::try_from(&record.span_id).ok();
         let event_name = if record.event_name.is_empty() { None } else { Some(record.event_name) };
 
         let mut tags = HashMap::new();
@@ -132,23 +133,6 @@ fn get_severity(log_record: &LogRecord) -> Severity {
             _ => Severity::Unknown(log_record.severity_text.clone()),
         }
     }
-}
-
-fn is_valid_trace_id(trace_id: &Vec<u8>) -> bool {
-    trace_id.len() == 16 && trace_id.iter().all(|b| b > &0)
-}
-
-fn is_valid_span_id(span_id: &Vec<u8>) -> bool {
-    span_id.len() == 8 && span_id.iter().all(|b| b > &0)
-}
-
-fn bytes_to_hex(bytes: &Vec<u8>) -> String {
-    let hex_string = bytes.iter()
-        .fold(String::with_capacity(bytes.len() * 2), |mut acc, b| {
-            acc.push_str(&format!("{:02x}", b));
-            acc
-        });
-    hex_string
 }
 
 #[cfg(test)]

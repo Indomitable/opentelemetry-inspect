@@ -1,6 +1,6 @@
 mod subscription_manager;
 mod opentelemetry;
-mod log_dto;
+mod domain;
 
 use std::collections::{HashMap};
 use std::sync::{Arc};
@@ -18,7 +18,8 @@ use uuid::{Uuid};
 use tokio::sync::{RwLock};
 use crate::subscription_manager::{Message as Msg, SubscriptionManager, Topic};
 use crate::opentelemetry::proto::collector::logs::v1::{ExportLogsServiceRequest, ExportLogsServiceResponse};
-use crate::log_dto::LogDto;
+use crate::domain::logs::LogDto;
+use crate::opentelemetry::proto::collector::trace::v1::ExportTraceServiceResponse;
 
 #[derive(Clone)]
 struct AppState {
@@ -52,7 +53,8 @@ pub fn run() {
 
 fn get_otlp_routes() -> Router<AppState> {
     let otlp_routes = Router::new()
-        .route("/logs", post(handle_logs));
+        .route("/logs", post(handle_logs))
+        .route("/traces", post(handle_traces));
     otlp_routes
 }
 
@@ -92,7 +94,6 @@ async fn handle_logs(State(state): State<AppState>, request: axum::extract::Requ
         Err(_) => return (StatusCode::BAD_REQUEST, "Failed to read request body").into_response(),
     };
     let request = ExportLogsServiceRequest::decode(body).unwrap();
-    //println!("Received request: {:?}", request);
 
     for resource_log in request.resource_logs {
         let resource = resource_log.resource.as_ref();
@@ -110,6 +111,24 @@ async fn handle_logs(State(state): State<AppState>, request: axum::extract::Requ
     let mut bytes = Vec::new();
     let export_logs_response = ExportLogsServiceResponse::default();
     ExportLogsServiceResponse::encode(&export_logs_response, &mut bytes).unwrap();
+    Response::builder()
+        .status(StatusCode::OK)
+        .header("content-type", "application/x-protobuf")
+        .body(bytes.into())
+        .unwrap()
+}
+
+async fn handle_traces(State(state): State<AppState>, request: axum::extract::Request) -> impl IntoResponse {
+    let body = match axum::body::to_bytes(request.into_body(), usize::MAX).await {
+        Ok(bytes) => bytes,
+        Err(_) => return (StatusCode::BAD_REQUEST, "Failed to read request body").into_response(),
+    };
+    let request = opentelemetry::proto::collector::trace::v1::ExportTraceServiceRequest::decode(body).unwrap();
+    println!("Received {:?} spans", request);
+
+    let mut bytes = Vec::new();
+    let export_traces_response = ExportTraceServiceResponse::default();
+    ExportTraceServiceResponse::encode(&export_traces_response, &mut bytes).unwrap();
     Response::builder()
         .status(StatusCode::OK)
         .header("content-type", "application/x-protobuf")
