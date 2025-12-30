@@ -1,6 +1,8 @@
 use serde::{Serialize};
 use std::collections::HashMap;
 use chrono::{DateTime, Utc, TimeZone};
+use crate::domain::any_value_to_string;
+use crate::domain::resource::ResourceInfo;
 use super::traces::{SpanId, TraceId};
 use crate::opentelemetry::proto::logs::v1::LogRecord;
 use crate::opentelemetry::proto::common::v1::{AnyValue, any_value};
@@ -33,15 +35,6 @@ pub struct LogDto {
     pub tags: HashMap<String, String>,
 }
 
-#[derive(Serialize, Clone, Debug)]
-pub struct ResourceInfo {
-    pub service_name: String,
-    pub service_version: String,
-    pub service_namespace: String,
-    pub service_instance_id: String,
-    pub attributes: HashMap<String, String>,
-}
-
 impl LogDto {
     pub fn from_otlp(
         record: LogRecord,
@@ -68,27 +61,7 @@ impl LogDto {
             tags.insert(attr.key, any_value_to_string(attr.value.unwrap_or_default()));
         }
 
-        let mut resource_info = ResourceInfo {
-            service_name: "unknown_service".to_string(),
-            service_version: "unknown".to_string(),
-            service_namespace: "unknown".to_string(),
-            service_instance_id: "unknown".to_string(),
-            attributes: HashMap::new(),
-        };
-
-        if let Some(res) = resource {
-            for attr in &res.attributes {
-                match attr.key.as_str() {
-                    "service.name" => resource_info.service_name = any_value_to_string(attr.value.clone().unwrap_or_default()),
-                    "service.version" => resource_info.service_version = any_value_to_string(attr.value.clone().unwrap_or_default()),
-                    "service.namespace" => resource_info.service_namespace = any_value_to_string(attr.value.clone().unwrap_or_default()),
-                    "service.instance.id" => resource_info.service_instance_id = any_value_to_string(attr.value.clone().unwrap_or_default()),
-                    _ => {
-                        resource_info.attributes.insert(attr.key.clone(), any_value_to_string(attr.value.clone().unwrap_or_default()));
-                    }
-                }
-            }
-        }
+        let resource_info: ResourceInfo = resource.map(|r| ResourceInfo::from(r)).unwrap_or_default();
 
         LogDto {
             timestamp,
@@ -101,16 +74,6 @@ impl LogDto {
             resource: resource_info,
             tags,
         }
-    }
-}
-
-fn any_value_to_string(value: AnyValue) -> String {
-    match value.value {
-        Some(any_value::Value::StringValue(s)) => s,
-        Some(any_value::Value::BoolValue(b)) => b.to_string(),
-        Some(any_value::Value::IntValue(i)) => i.to_string(),
-        Some(any_value::Value::DoubleValue(f)) => f.to_string(),
-        _ => format!("{:?}", value),
     }
 }
 
