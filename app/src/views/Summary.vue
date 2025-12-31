@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { state } from '../store';
+import {useLogsStore} from "../state/logs-store.ts";
+
+const logsStore = useLogsStore();
 </script>
 
 <template>
@@ -9,7 +11,7 @@ import { state } from '../store';
       <div class="stat-card">
         <h3>Total Logs</h3>
         <router-link to="/logs" class="stat-value">
-          {{ state.totalLogs }}
+          {{ logsStore.totalCount }}
         </router-link>
       </div>
     </div>

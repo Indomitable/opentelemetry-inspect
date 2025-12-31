@@ -1,7 +1,8 @@
 <script setup lang="ts">
 
 import { onMounted, onUnmounted } from 'vue';
-import { addLog } from './store';
+import {useLogsStore} from "./state/logs-store.ts";
+const logsStore = useLogsStore();
 
 interface Message {
   topic: string;
@@ -24,7 +25,7 @@ onMounted(() => {
     if (message.topic === 'logs') {
       try {
         const logData = JSON.parse(message.payload);
-        addLog(logData);
+        logsStore.addLog(logData);
       } catch (e) {
         console.error('Failed to parse log payload', e);
       }

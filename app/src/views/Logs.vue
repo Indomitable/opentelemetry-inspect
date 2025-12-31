@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { state, type LogDto } from '../store';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Select from 'primevue/select';
+import {useLogsStore} from "../state/logs-store.ts";
+import {Log} from "../domain/logs.ts";
+import {useResourceStore} from "../state/resource-store.ts";
 
-const selectedLog = ref<LogDto | null>(null);
+const logsStore = useLogsStore();
+const resourceStore = useResourceStore();
+
+const selectedLog = ref<Log | null>(null);
 const selectedInstanceId = ref<string>('');
 
 const formatDate = (dateStr: string) => {
@@ -13,7 +18,7 @@ const formatDate = (dateStr: string) => {
 };
 
 const instanceIds = computed(() => {
-  const ids = new Set(state.logs.map(log => log.resource.service_instance_id));
+  const ids = new Set(resourceStore.resources.map(r => r.service_instance_id));
   return Array.from(ids).sort().map(id => ({ label: id, value: id }));
 });
 
@@ -22,13 +27,11 @@ const instanceOptions = computed(() => {
 });
 
 const filteredLogs = computed(() => {
-  let logs = [...state.logs];
-
   if (selectedInstanceId.value) {
-    logs = logs.filter(log => log.resource.service_instance_id === selectedInstanceId.value);
+    return logsStore.logsByInstance(selectedInstanceId.value);
   }
 
-  return logs;
+  return logsStore.logs;
 });
 
 const getLogLevelClass = (logLevel: string) => {
