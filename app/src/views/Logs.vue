@@ -2,33 +2,26 @@
 import { ref, computed } from 'vue';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
-import Select from 'primevue/select';
 import {useLogsStore} from "../state/logs-store.ts";
 import {Log} from "../domain/logs.ts";
-import {useResourceStore} from "../state/resource-store.ts";
 import ResourceDetailsView from "../components/resource-details-view.vue";
+import ResourceSelector from "../components/resource-selector.vue";
 
 const logsStore = useLogsStore();
-const resourceStore = useResourceStore();
 
 const selectedLog = ref<Log | null>(null);
-const selectedInstanceId = ref<string>('');
+const selectedInstanceId = ref<string>('-');
 
 const formatDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleString();
 };
 
-const instanceIds = computed(() => {
-  const ids = new Set(resourceStore.resources.map(r => r.service_instance_id));
-  return Array.from(ids).sort().map(id => ({ label: id, value: id }));
-});
-
-const instanceOptions = computed(() => {
-  return [{ label: 'All Instances', value: '' }, ...instanceIds.value];
-});
+const filterLogs = (instanceId: string) => {
+  selectedInstanceId.value = instanceId;
+};
 
 const filteredLogs = computed(() => {
-  if (selectedInstanceId.value) {
+  if (selectedInstanceId.value !== '-') {
     return logsStore.logsByInstance(selectedInstanceId.value);
   }
 
@@ -70,16 +63,7 @@ const getLogLevelClass = (logLevel: string) => {
       <div class="header-row">
         <h1>Logs</h1>
         <div class="filters">
-          <label for="instance-filter">Instance ID:</label>
-          <Select 
-            id="instance-filter" 
-            v-model="selectedInstanceId" 
-            :options="instanceOptions" 
-            optionLabel="label" 
-            optionValue="value" 
-            placeholder="Select Instance"
-            size="small"
-          />
+          <resource-selector @update:model-value="filterLogs" />
         </div>
       </div>
       
