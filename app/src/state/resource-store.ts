@@ -1,4 +1,4 @@
-import {defineStore} from "pinia";
+import {acceptHMRUpdate, defineStore} from "pinia";
 import {Resource} from "../domain/resources.ts";
 
 export const useResourceStore = defineStore('resources', {
@@ -16,3 +16,7 @@ export const useResourceStore = defineStore('resources', {
         }
     }
 });
+
+if (import.meta.hot) {
+    import.meta.hot.accept(acceptHMRUpdate(useResourceStore, import.meta.hot))
+}
