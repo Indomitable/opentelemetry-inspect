@@ -1,16 +1,19 @@
+#[allow(unused)]
 use std::collections::HashMap;
 use serde::Serialize;
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::Receiver;
 use crate::domain::logs::LogDto;
+use crate::domain::traces::SpanDto;
 
 pub type ClientId = String;
 pub type Topic = String;
 
 #[derive(Clone, Serialize, Debug)]
-#[serde(tag = "type")]
+#[serde(untagged)] // no need to deserialize so we can use untagged
 pub(crate) enum TopicMessage {
     Logs { topic: String, payload: Box<LogDto> },
+    Spans { topic: String, payload: Box<SpanDto> },
     Any { topic: String, payload: String }
 }
 
@@ -22,6 +25,7 @@ impl TopicMessage {
     pub fn topic(&self) -> &str {
         match self {
             TopicMessage::Logs { topic, .. } => topic.as_str(),
+            TopicMessage::Spans { topic, .. } => topic.as_str(),
             TopicMessage::Any { topic, .. } => topic.as_str(),
         }
     }
@@ -30,6 +34,12 @@ impl TopicMessage {
 impl From<LogDto> for TopicMessage {
     fn from(value: LogDto) -> Self {
         TopicMessage::Logs { topic: "logs".to_string(), payload: Box::new(value) }
+    }
+}
+
+impl From<SpanDto> for TopicMessage {
+    fn from(value: SpanDto) -> Self {
+        TopicMessage::Spans { topic: "traces".to_string(), payload: Box::new(value) }
     }
 }
 
@@ -86,7 +96,16 @@ impl SubscriptionManager {
         }
     }
 
-    pub fn publish_logs(&self, payload: LogDto) -> Result<usize, broadcast::error::SendError<TopicMessage>> {
+    pub fn publish_log(&self, payload: LogDto) -> Result<usize, broadcast::error::SendError<TopicMessage>> {
+        let event = TopicMessage::from(payload);
+        if let Some(tx) = self.channels.get(event.topic()) {
+            tx.send(event)
+        } else {
+            Ok(0)
+        }
+    }
+
+    pub fn publish_span(&self, payload: SpanDto) -> Result<usize, broadcast::error::SendError<TopicMessage>> {
         let event = TopicMessage::from(payload);
         if let Some(tx) = self.channels.get(event.topic()) {
             tx.send(event)
@@ -98,6 +117,9 @@ impl SubscriptionManager {
 
 #[cfg(test)]
 mod tests {
+    use chrono::{TimeZone, Utc};
+    use crate::domain::logs::Severity;
+    use crate::domain::resource::ResourceInfo;
     use super::*;
 
     #[tokio::test]
@@ -181,6 +203,47 @@ mod tests {
 
         assert_eq!(1, m0.unwrap().len());
         assert_eq!(2, m1.unwrap().len());
+    }
+
+    #[test]
+    fn test_message_serialization() {
+        let log = LogDto {
+            timestamp: Utc.with_ymd_and_hms(2025, 1, 12, 14, 23, 20).unwrap(),
+            message: "test".to_string(),
+            scope: "TestScope".to_string(),
+            severity: Severity::Error,
+            tags: HashMap::new(),
+            resource: ResourceInfo {
+                service_name: "test service".to_string(),
+                service_version: "1.0".to_string(),
+                service_namespace: "test".to_string(),
+                service_instance_id: "1-2-3".to_string(),
+                attributes: HashMap::new()
+            },
+            event_name: None,
+            span_id: None,
+            trace_id: None
+        };
+        let message = TopicMessage::from(log);
+        let json = serde_json::to_string_pretty(&message).unwrap();
+        //lang=JSON
+        assert_eq!(r#"{
+  "topic": "logs",
+  "payload": {
+    "timestamp": "2025-01-12T14:23:20Z",
+    "severity": "Error",
+    "message": "test",
+    "scope": "TestScope",
+    "resource": {
+      "service_name": "test service",
+      "service_version": "1.0",
+      "service_namespace": "test",
+      "service_instance_id": "1-2-3",
+      "attributes": {}
+    },
+    "tags": {}
+  }
+}"#, json);
     }
 
     fn collect_messages(mut receiver: Receiver<TopicMessage>) -> tokio::task::JoinHandle<Vec<TopicMessage>> {

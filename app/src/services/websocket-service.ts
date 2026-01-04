@@ -1,8 +1,14 @@
-import {Log} from "../domain/logs.ts";
+import {LogDto} from "../domain/logs.ts";
+import {SpanDto} from "../domain/traces.ts";
+
+export interface MessageHandlers {
+    onLogReceived: (log: LogDto) => void;
+    onSpanReceived: (span: SpanDto) => void;
+}
 
 export class WebSocketService {
     private socket: WebSocket | null = null;
-    private logsHandler : ((log: Log) => void) | null = null;
+    private handlers : MessageHandlers | null = null;
     private pingIntervalId: number | null = null;
     private reconnectTries: number = 0;
     private lastPongTimestamp: number = Date.now();
@@ -27,12 +33,14 @@ export class WebSocketService {
             }
 
             if (WebSocketService.isLogsEvent(data)) {
-                try {
-                    if (this.logsHandler) {
-                        this.logsHandler(data.payload);
-                    }
-                } catch (e) {
-                    console.error('Failed to parse log payload', e);
+                if (this.handlers) {
+                    this.handlers.onLogReceived(data.payload);
+                }
+            }
+
+            if (WebSocketService.isTracesEvent(data)) {
+                if (this.handlers) {
+                    this.handlers.onSpanReceived(data.payload);
                 }
             }
         });
@@ -40,12 +48,8 @@ export class WebSocketService {
         this.socket.addEventListener('open', () => {
             this.reconnectTries = 0; // reset reconnect tries on successful connection
             this.lastPongTimestamp = Date.now();
-            const command = JSON.stringify({
-                command: {
-                    "Subscribe": "logs"
-                }
-            });
-            this.socket?.send(command);
+            this.subscribeToTopic('logs');
+            this.subscribeToTopic('traces');
             this.startHeartbeat();
         });
 
@@ -56,8 +60,8 @@ export class WebSocketService {
 
     disconnect() {
         this.stopHeartbeat();
-        if (this.logsHandler) {
-            this.logsHandler = null;
+        if (this.handlers) {
+            this.handlers = null;
         }
         if (this.socket) {
             this.socket.close();
@@ -65,22 +69,31 @@ export class WebSocketService {
         }
     }
 
-    registerOnLogReceived(handler: (log: Log) => void) {
-        this.logsHandler = handler;
+    registerHandlers(handlers: MessageHandlers) {
+        this.handlers = handlers;
+    }
+
+    private subscribeToTopic(topic: string) {
+        const command = JSON.stringify({
+            command: {
+                "Subscribe": topic
+            }
+        });
+        this.socket?.send(command);
     }
 
     private reconnect() {
         if (this.reconnectTries > 5) {
             return; // give up after 5 tries
         }
-        const logsHandler = this.logsHandler; // copy reference
+        const handlers = this.handlers ? { ...this.handlers } : null;
         this.disconnect();
         // Attempt to reconnect after a delay
         setTimeout(() => {
             this.reconnectTries += 1;
             this.connect();
-            if (logsHandler) {
-                this.registerOnLogReceived(logsHandler);
+            if (handlers) {
+                this.registerHandlers(handlers);
             }
         }, 1000 * this.reconnectTries);
     }
@@ -129,8 +142,12 @@ export class WebSocketService {
         return 'client_id' in data;
     }
 
-    private static isLogsEvent(data: any): data is Message<Log> {
+    private static isLogsEvent(data: any): data is Message<LogDto> {
         return 'topic' in data && data.topic === 'logs' && 'payload' in data;
+    }
+
+    private static isTracesEvent(data: any): data is Message<SpanDto> {
+        return 'topic' in data && data.topic === 'traces' && 'payload' in data;
     }
 }
 

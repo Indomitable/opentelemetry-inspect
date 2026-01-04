@@ -13,16 +13,20 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	otlplog "go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/otel/propagation"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
+	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -124,8 +128,19 @@ func setupOTelSDK(ctx context.Context) (func(context.Context) error, error) {
 	prop := newPropagator()
 	otel.SetTextMapPropagator(prop)
 
+	// Set up resource.
+	resource, _ := resource.Merge(
+		resource.Default(),
+		resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String("todo-service"),
+			semconv.ServiceVersionKey.String("1.0.0"),
+			semconv.ServiceInstanceIDKey.String(uuid.New().String()),
+		),
+	)
+
 	// Set up trace provider.
-	tracerProvider, err := newTracerProvider(ctx)
+	tracerProvider, err := newTracerProvider(ctx, resource)
 	if err != nil {
 		handleErr(err)
 		return shutdown, err
@@ -143,7 +158,7 @@ func setupOTelSDK(ctx context.Context) (func(context.Context) error, error) {
 	// otel.SetMeterProvider(meterProvider)
 
 	// Set up logger provider.
-	loggerProvider, err := newLoggerProvider(ctx)
+	loggerProvider, err := newLoggerProvider(ctx, resource)
 	if err != nil {
 		handleErr(err)
 		return shutdown, err
@@ -161,30 +176,34 @@ func newPropagator() propagation.TextMapPropagator {
 	)
 }
 
-func newTracerProvider(ctx context.Context) (*sdktrace.TracerProvider, error) {
+func newTracerProvider(ctx context.Context, resource *resource.Resource) (*sdktrace.TracerProvider, error) {
 	exporter, err := otlptracehttp.New(ctx, otlptracehttp.WithInsecure(), otlptracehttp.WithEndpoint("localhost:4318"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create trace exporter: %w", err)
 	}
+	bsp := sdktrace.NewBatchSpanProcessor(exporter)
 	traceProvider := sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(exporter),
+		sdktrace.WithResource(resource),
+		sdktrace.WithSpanProcessor(bsp),
 	)
 	return traceProvider, nil
 }
 
-func newLoggerProvider(ctx context.Context) (*sdklog.LoggerProvider, error) {
+func newLoggerProvider(ctx context.Context, resource *resource.Resource) (*sdklog.LoggerProvider, error) {
 	exporter, err := otlplog.New(ctx, otlplog.WithInsecure(), otlplog.WithEndpoint("localhost:4318"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create log exporter: %w", err)
 	}
+	processor := sdklog.NewBatchProcessor(exporter)
 	loggerProvider := sdklog.NewLoggerProvider(
-		sdklog.WithProcessor(sdklog.NewBatchProcessor(exporter)),
+		sdklog.WithResource(resource),
+		sdklog.WithProcessor(processor),
 	)
 	return loggerProvider, nil
 }
 
 func getTodos(w http.ResponseWriter, r *http.Request) {
-	_, span := tracer.Start(r.Context(), "getTodos")
+	_, span := tracer.Start(r.Context(), "getTodos", trace.WithSpanKind(trace.SpanKindServer), trace.WithAttributes(attribute.String("http.method", r.Method)))
 	defer span.End()
 	logger.Info("getTodos")
 
@@ -203,6 +222,7 @@ func createTodo(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
+		logger.Error("failed to decode todo", "error", err)
 		return
 	}
 	todos = append(todos, todo)

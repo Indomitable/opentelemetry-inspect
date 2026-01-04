@@ -1,0 +1,17 @@
+.list-table {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+@media (prefers-color-scheme: dark) {
+    .list-table {
+        border-color: #444;
+    }
+}
+
+.list-table__empty {
+    text-align: center;
+    height: 40px;
+    line-height: 40px;
+}

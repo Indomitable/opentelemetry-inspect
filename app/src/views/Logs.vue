@@ -12,10 +12,6 @@ const logsStore = useLogsStore();
 const selectedLog = ref<Log | null>(null);
 const selectedInstanceId = ref<string>('-');
 
-const formatDate = (dateStr: string) => {
-  return new Date(dateStr).toLocaleString();
-};
-
 const filterLogs = (instanceId: string) => {
   selectedInstanceId.value = instanceId;
 };
@@ -58,11 +54,11 @@ const getLogLevelClass = (logLevel: string) => {
 </script>
 
 <template>
-  <div class="logs-page">
-    <div class="logs-container" :class="{ 'with-details': selectedLog }">
-      <div class="header-row">
+  <div class="page">
+    <div class="page__container" :class="{ 'page__container--with-details': selectedLog }">
+      <div class="page__header-row">
         <h1>Logs</h1>
-        <div class="filters">
+        <div class="page__filters">
           <resource-selector @update:model-value="filterLogs" />
         </div>
       </div>
@@ -78,12 +74,12 @@ const getLogLevelClass = (logLevel: string) => {
         columnResizeMode="fit"
         sortField="timestamp"
         :sortOrder="-1"
-        class="p-datatable-sm custom-table"
+        class="p-datatable-sm list-table"
       >
-        <template #empty><div class="custom-table__empty">No logs recorded.</div></template>
+        <template #empty><div class="list-table__empty">No logs recorded.</div></template>
         <Column field="timestamp" header="Timestamp" sortable :style="{ width: '220px' }">
           <template #body="slotProps">
-            {{ formatDate(slotProps.data.timestamp) }}
+            {{ slotProps.data.logTimeStamp.toLocaleString() }}
           </template>
         </Column>
         <Column field="severity" header="Level" sortable :style="{ width: '120px' }">
@@ -147,8 +143,8 @@ const getLogLevelClass = (logLevel: string) => {
           <h3>Resource Info</h3>
           <resource-details-view :resource="selectedLog!.resource" />
 
-          <h3>Attributes</h3>
-          <div class="details-table">
+          <h3 v-if="selectedLog!.tags.length">Attributes</h3>
+          <div class="details-table" v-if="selectedLog!.tags.length">
             <div class="details-row header">
               <div>Key</div>
               <div>Value</div>
@@ -165,55 +161,6 @@ const getLogLevelClass = (logLevel: string) => {
 </template>
 
 <style scoped>
-.logs-page {
-  display: flex;
-  height: 100%;
-  overflow: hidden;
-}
-
-.logs-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  transition: flex 0.3s;
-}
-
-.header-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.filters {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.logs-container.with-details {
-  flex: 0 0 60%;
-  padding-right: 15px;
-}
-
-.custom-table {
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-@media (prefers-color-scheme: dark) {
-  .custom-table {
-    border-color: #444;
-  }
-}
-
-.custom-table__empty {
-  text-align: center;
-  height: 40px;
-  line-height: 40px;
-}
 
 .level.info { color: #2196f3; }
 .level.error { color: #f44336; }
@@ -221,68 +168,6 @@ const getLogLevelClass = (logLevel: string) => {
 .level.warn { color: #ff9800; }
 .level.debug { color: #9c27b0; }
 
-.details-panel {
-  flex: 0 0 40%;
-  border-left: 1px solid #ddd;
-  background: #fff;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  box-shadow: -2px 0 5px rgba(0,0,0,0.05);
-  padding: 15px;
-}
 
-@media (prefers-color-scheme: dark) {
-  .details-panel {
-    background: #1e1e1e;
-    border-color: #444;
-  }
-}
-
-.details-header {
-  padding: 10px 0;
-  border-bottom: 1px solid #eee;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.details-header h2 {
-  margin: 0;
-  font-size: 1.2rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.slide-enter-active,
-.slide-leave-active {
-  transition: all 0.3s ease;
-}
-
-.slide-enter-from,
-.slide-leave-to {
-  transform: translateX(100%);
-  opacity: 0;
-}
-
-@media (prefers-color-scheme: dark) {
-  .details-header {
-    border-bottom-color: #333;
-  }
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #888;
-  order: 2;
-  margin-left: auto;
-}
-
-.details-content {
-}
 
 </style>

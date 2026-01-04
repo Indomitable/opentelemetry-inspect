@@ -14,10 +14,10 @@ pub struct ResourceInfo {
 impl Default for ResourceInfo {
     fn default() -> Self {
         ResourceInfo {
-            service_name: "unknown_service".to_string(),
-            service_version: "unknown".to_string(),
-            service_namespace: "unknown".to_string(),
-            service_instance_id: "unknown".to_string(),
+            service_name: "".to_string(),
+            service_version: "".to_string(),
+            service_namespace: "".to_string(),
+            service_instance_id: "".to_string(),
             attributes: HashMap::new(),
         }
     }

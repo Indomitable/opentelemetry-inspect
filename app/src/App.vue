@@ -1,17 +1,26 @@
 <script setup lang="ts">
 import './styles/details-table.css';
+import './styles/page.css';
+import './styles/list-table.css';
 
 import { onMounted, onUnmounted } from 'vue';
 import {useLogsStore} from "./state/logs-store.ts";
 import {WebSocketService} from "./services/websocket-service.ts";
+import {useTracesStore} from "./state/traces-store.ts";
 
 const logsStore = useLogsStore();
+const tracesStore = useTracesStore();
 let ws: WebSocketService | null = null;
 
 onMounted(() => {
   ws = new WebSocketService();
-  ws.registerOnLogReceived((log) => {
-    logsStore.addLog(log);
+  ws.registerHandlers({
+    onLogReceived: (log) => {
+      logsStore.addLog(log);
+    },
+    onSpanReceived: (span) => {
+      tracesStore.addSpan(span);
+    }
   });
   ws.connect();
 });

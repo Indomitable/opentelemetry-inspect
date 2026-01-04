@@ -1,6 +1,6 @@
 import {Resource} from "./resources.ts";
 
-export interface Log {
+export interface LogDto {
     timestamp: string;
     severity: string;
     message: string;
@@ -10,4 +10,15 @@ export interface Log {
     event_name?: string;
     resource: Resource;
     tags: Record<string, string>;
+}
+
+export interface Log extends LogDto {
+    logTimeStamp: Date;
+}
+
+export function mapLogDtoToLog(dto: LogDto): Log {
+    return {
+        ...dto,
+        logTimeStamp: new Date(dto.timestamp),
+    };
 }
