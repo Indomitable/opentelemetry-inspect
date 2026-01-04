@@ -4,5 +4,6 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
+  <Project Path="OpenTelemetry.TestingProject.AppHost/OpenTelemetry.TestingProject.AppHost.csproj" />
   <Project Path="OpenTelemetry.TestingProject/OpenTelemetry.TestingProject.csproj" />
 </Solution>

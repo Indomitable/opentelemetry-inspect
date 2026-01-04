@@ -8,6 +8,16 @@ var builder = WebApplication.CreateBuilder(args);
 const string activitySourceName = "OpenTelemetry.Inspect";
 
 builder.Services.AddOpenApi();
+///
+/// <see ref="OtlpExporterOptions" />
+/// internal const string DefaultGrpcEndpoint = "http://localhost:4317";
+/// internal const string DefaultHttpEndpoint = "http://localhost:4318";
+///
+// if OTEL_EXPORTER_OTLP_ENDPOINT is set from OT plugin.
+// https://github.com/open-telemetry/opentelemetry-dotnet/tree/main/src/OpenTelemetry.Exporter.OpenTelemetryProtocol#environment-variables
+// https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/#endpoint-configuration
+var otlpAddress = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
+var protocol = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_PROTOCOL"); // can be "grpc", "http/protobuf" or "http/json"
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(rb =>
     {
@@ -18,7 +28,7 @@ builder.Services.AddOpenTelemetry()
         tb.AddSource(activitySourceName);
     })
     .WithLogging()
-    .UseOtlpExporter(OtlpExportProtocol.HttpProtobuf, new Uri("http://127.0.0.1:4318"));
+    .UseOtlpExporter(string.IsNullOrEmpty(protocol) || protocol == "grpc" ? OtlpExportProtocol.Grpc : OtlpExportProtocol.HttpProtobuf, new Uri(otlpAddress ?? "http://127.0.0.1:4318"));
 
 builder.Services.AddSingleton<ActivitySource>(_ =>  new ActivitySource(activitySourceName));
 
