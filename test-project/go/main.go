@@ -15,11 +15,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"go.opentelemetry.io/contrib/bridges/otelslog"
+	logbridge "go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	otlplog "go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/otel/propagation"
@@ -56,7 +56,7 @@ func main() {
 	}()
 
 	tracer = otel.Tracer("todo-service")
-	logger = otelslog.NewLogger("todo-service")
+	logger = logbridge.NewLogger("todo-server")
 	logger.Info("Starting application...")
 
 	todos = append(todos, Todo{ID: "1", Title: "Learn OpenTelemetry", Completed: false})
@@ -190,7 +190,7 @@ func newTracerProvider(ctx context.Context, resource *resource.Resource) (*sdktr
 }
 
 func newLoggerProvider(ctx context.Context, resource *resource.Resource) (*sdklog.LoggerProvider, error) {
-	exporter, err := otlplog.New(ctx, otlplog.WithInsecure(), otlplog.WithEndpoint("localhost:4318"))
+	exporter, err := otlploghttp.New(ctx, otlploghttp.WithInsecure(), otlploghttp.WithEndpoint("localhost:4318"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create log exporter: %w", err)
 	}
