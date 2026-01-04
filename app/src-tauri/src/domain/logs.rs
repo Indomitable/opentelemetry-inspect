@@ -5,7 +5,6 @@ use crate::domain::any_value_to_string;
 use crate::domain::resource::ResourceInfo;
 use super::traces::{SpanId, TraceId};
 use crate::opentelemetry::proto::logs::v1::LogRecord;
-use crate::opentelemetry::proto::common::v1::{AnyValue, any_value};
 use crate::opentelemetry::proto::resource::v1::Resource;
 use crate::opentelemetry::proto::common::v1::InstrumentationScope;
 
@@ -101,7 +100,7 @@ fn get_severity(log_record: &LogRecord) -> Severity {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::opentelemetry::proto::common::v1::{KeyValue, any_value};
+    use crate::opentelemetry::proto::common::v1::{KeyValue, any_value, AnyValue};
     use crate::opentelemetry::proto::resource::v1::Resource;
 
     #[test]

@@ -65,9 +65,10 @@ impl SubscriptionManager {
         }
     }
 
-    pub fn publish(&self, message: Message) -> Result<usize, broadcast::error::SendError<Message>> {
-        if let Some(tx) = self.channels.get(&message.topic) {
-            tx.send(message)
+    pub fn publish(&self, topic: &str, payload: &str) -> Result<usize, broadcast::error::SendError<Message>> {
+        let event = Message::new(topic, payload);
+        if let Some(tx) = self.channels.get(&event.topic) {
+            tx.send(event)
         } else {
             Ok(0)
         }
@@ -95,8 +96,7 @@ mod tests {
             let msg= r1.recv().await.unwrap();
             msg
         });
-        let message = Message::new("test-topic", "test");
-        let res = manager.publish(message);
+        let res = manager.publish("test-topic", "test");
 
         assert!(res.is_ok());
         assert_eq!(2, res.unwrap());
@@ -116,13 +116,11 @@ mod tests {
 
         let w0 = collect_messages(r);
 
-        let message = Message::new("test-topic", "first");
-        let res = manager.publish(message).unwrap();
+        let res = manager.publish("test-topic", "first").unwrap();
 
         assert_eq!(1, res);
         manager.unsubscribe_client(&"test-client".to_string());
-        let message = Message::new("test-topic", "second");
-        let res = manager.publish(message).unwrap();
+        let res = manager.publish("test-topic", "second").unwrap();
         assert_eq!(0, res);
 
         let messages = w0.await.unwrap();
@@ -138,20 +136,16 @@ mod tests {
         let w0 = collect_messages(r0);
         let w1 = collect_messages(r1);
 
-        let message = Message::new("test-topic-0", "first");
-        let res = manager.publish(message).unwrap();
+        let res = manager.publish("test-topic-0", "first").unwrap();
         assert_eq!(1, res);
-        let message = Message::new("test-topic-1", "first");
-        let res = manager.publish(message).unwrap();
+        let res = manager.publish("test-topic-1", "first").unwrap();
         assert_eq!(1, res);
 
         manager.unsubscribe(&"test-client".to_string(), &"test-topic-0".to_string());
 
-        let message = Message::new("test-topic-0", "second");
-        let res = manager.publish(message).unwrap();
+        let res = manager.publish("test-topic-0", "second").unwrap();
         assert_eq!(0, res);
-        let message = Message::new("test-topic-1", "second");
-        let res = manager.publish(message).unwrap();
+        let res = manager.publish("test-topic-1", "second").unwrap();
         assert_eq!(1, res);
 
         manager.unsubscribe_client(&"test-client".to_string());
