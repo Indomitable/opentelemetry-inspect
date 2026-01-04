@@ -6,6 +6,7 @@ import Select from 'primevue/select';
 import {useLogsStore} from "../state/logs-store.ts";
 import {Log} from "../domain/logs.ts";
 import {useResourceStore} from "../state/resource-store.ts";
+import ResourceDetailsView from "../components/resource-details-view.vue";
 
 const logsStore = useLogsStore();
 const resourceStore = useResourceStore();
@@ -160,32 +161,7 @@ const getLogLevelClass = (logLevel: string) => {
           </div>
 
           <h3>Resource Info</h3>
-          <div class="details-table">
-            <div class="details-row header">
-              <div>Key</div>
-              <div>Value</div>
-            </div>
-            <div class="details-row">
-              <div>Service Name</div>
-              <div>{{ selectedLog.resource.service_name }}</div>
-            </div>
-            <div class="details-row">
-              <div>Service Version</div>
-              <div>{{ selectedLog.resource.service_version }}</div>
-            </div>
-            <div class="details-row">
-              <div>Service Namespace</div>
-              <div>{{ selectedLog.resource.service_namespace }}</div>
-            </div>
-            <div class="details-row">
-              <div>Service Instance ID</div>
-              <div>{{ selectedLog.resource.service_instance_id }}</div>
-            </div>
-            <div v-for="(value, key) in selectedLog!.resource.attributes" :key="key" class="details-row">
-              <div>{{ key }}</div>
-              <div>{{ value }}</div>
-            </div>
-          </div>
+          <resource-details-view :resource="selectedLog!.resource" />
 
           <h3>Tags</h3>
           <div class="details-table">
@@ -325,62 +301,4 @@ const getLogLevelClass = (logLevel: string) => {
 .details-content {
 }
 
-.details-table {
-  display: flex;
-  flex-direction: column;
-  border: 1px solid #eee;
-  border-radius: 4px;
-  margin-bottom: 20px;
-}
-
-@media (prefers-color-scheme: dark) {
-  .details-table {
-    border-color: #333;
-  }
-}
-
-.details-row {
-  display: flex;
-  border-bottom: 1px solid #eee;
-}
-
-@media (prefers-color-scheme: dark) {
-  .details-row {
-    border-bottom-color: #333;
-  }
-}
-
-.details-row:last-child {
-  border-bottom: none;
-}
-
-.details-row.header {
-  background: #f9f9f9;
-  font-weight: bold;
-}
-
-@media (prefers-color-scheme: dark) {
-  .details-row.header {
-    background: #2a2a2a;
-  }
-}
-
-.details-row div {
-  padding: 8px;
-  flex: 1;
-  word-break: break-all;
-}
-
-.details-row div:first-child {
-  flex: 0 0 160px;
-  border-right: 1px solid #eee;
-  background: #fafafa;
-}
-
-@media (prefers-color-scheme: dark) {
-  .details-row div:first-child {
-    border-right-color: #333;
-    background: #252525;
-  }
-}
 </style>
