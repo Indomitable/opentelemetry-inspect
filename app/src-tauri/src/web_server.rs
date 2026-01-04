@@ -44,8 +44,7 @@ async fn handle_logs(State(state): State<AppState>, request: axum::extract::Requ
             let scope = scope_log.scope.as_ref();
             for log_record in scope_log.log_records {
                 let dto = LogDto::from_otlp(log_record, scope, resource);
-                let payload = serde_json::to_string(&dto).unwrap();
-                let _ = state.subscription_manager.read().await.publish("logs", &payload);
+                let _ = state.subscription_manager.read().await.publish_logs(dto);
             }
         }
     }

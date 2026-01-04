@@ -26,16 +26,13 @@ export class WebSocketService {
                 return;
             }
 
-            if (WebSocketService.isPayloadEvent(data)) {
-                if (data.topic === 'logs') {
-                    try {
-                        const logData = JSON.parse(data.payload) as Log;
-                        if (this.logsHandler) {
-                            this.logsHandler(logData);
-                        }
-                    } catch (e) {
-                        console.error('Failed to parse log payload', e);
+            if (WebSocketService.isLogsEvent(data)) {
+                try {
+                    if (this.logsHandler) {
+                        this.logsHandler(data.payload);
                     }
+                } catch (e) {
+                    console.error('Failed to parse log payload', e);
                 }
             }
         });
@@ -132,12 +129,12 @@ export class WebSocketService {
         return 'client_id' in data;
     }
 
-    private static isPayloadEvent(data: any): data is Message {
-        return 'topic' in data && 'payload' in data;
+    private static isLogsEvent(data: any): data is Message<Log> {
+        return 'topic' in data && data.topic === 'logs' && 'payload' in data;
     }
 }
 
-interface Message {
+interface Message<TPayload> {
     topic: string;
-    payload: string;
+    payload: TPayload;
 }

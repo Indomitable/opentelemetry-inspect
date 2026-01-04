@@ -27,8 +27,11 @@ pub struct LogDto {
     pub severity: Severity,
     pub message: String,
     pub scope: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub trace_id: Option<TraceId>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub span_id: Option<SpanId>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub event_name: Option<String>,
     pub resource: ResourceInfo,
     pub tags: HashMap<String, String>,

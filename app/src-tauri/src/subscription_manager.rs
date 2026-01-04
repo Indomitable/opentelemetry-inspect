@@ -2,29 +2,41 @@ use std::collections::HashMap;
 use serde::Serialize;
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::Receiver;
+use crate::domain::logs::LogDto;
 
 pub type ClientId = String;
 pub type Topic = String;
 
 #[derive(Clone, Serialize, Debug)]
-pub struct Message {
-    pub topic: Topic,
-    pub payload: String,
+#[serde(tag = "type")]
+pub(crate) enum TopicMessage {
+    Logs { topic: String, payload: Box<LogDto> },
+    Any { topic: String, payload: String }
 }
 
-impl Message {
+impl TopicMessage {
     pub fn new(topic: &str, payload: &str) -> Self {
-        Message {
-            topic: topic.to_string(),
-            payload: payload.to_string()
+        TopicMessage::Any { topic: topic.to_string(), payload: payload.to_string() }
+    }
+
+    pub fn topic(&self) -> &str {
+        match self {
+            TopicMessage::Logs { topic, .. } => topic.as_str(),
+            TopicMessage::Any { topic, .. } => topic.as_str(),
         }
+    }
+}
+
+impl From<LogDto> for TopicMessage {
+    fn from(value: LogDto) -> Self {
+        TopicMessage::Logs { topic: "logs".to_string(), payload: Box::new(value) }
     }
 }
 
 #[derive(Clone)]
 pub struct SubscriptionManager {
     subscribers: HashMap<Topic, Vec<ClientId>>,
-    channels: HashMap<Topic, broadcast::Sender<Message>>
+    channels: HashMap<Topic, broadcast::Sender<TopicMessage>>
 }
 
 impl SubscriptionManager {
@@ -35,7 +47,7 @@ impl SubscriptionManager {
         }
     }
 
-    pub fn subscribe(&mut self, topic: Topic, client_id: ClientId) -> Receiver<Message> {
+    pub fn subscribe(&mut self, topic: Topic, client_id: ClientId) -> Receiver<TopicMessage> {
         self.subscribers
             .entry(topic.clone())
             .or_default()
@@ -65,16 +77,24 @@ impl SubscriptionManager {
         }
     }
 
-    pub fn publish(&self, topic: &str, payload: &str) -> Result<usize, broadcast::error::SendError<Message>> {
-        let event = Message::new(topic, payload);
-        if let Some(tx) = self.channels.get(&event.topic) {
+    pub fn publish(&self, topic: &str, payload: &str) -> Result<usize, broadcast::error::SendError<TopicMessage>> {
+        let event = TopicMessage::new(topic, payload);
+        if let Some(tx) = self.channels.get(event.topic()) {
+            tx.send(event)
+        } else {
+            Ok(0)
+        }
+    }
+
+    pub fn publish_logs(&self, payload: LogDto) -> Result<usize, broadcast::error::SendError<TopicMessage>> {
+        let event = TopicMessage::from(payload);
+        if let Some(tx) = self.channels.get(event.topic()) {
             tx.send(event)
         } else {
             Ok(0)
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -102,8 +122,16 @@ mod tests {
         assert_eq!(2, res.unwrap());
 
         let (m0, m1) = tokio::join!(w0, w1);
-        assert_eq!("test", m0.unwrap().payload);
-        assert_eq!("test", m1.unwrap().payload);
+        if let Ok(TopicMessage::Any { payload, .. }) = m0 {
+            assert_eq!("test", payload);
+        } else {
+            panic!("Expected topic message");
+        }
+        if let Ok(TopicMessage::Any { payload, .. }) = m1 {
+            assert_eq!("test", payload);
+        } else {
+            panic!("Expected topic message");
+        }
 
         manager.unsubscribe_client(&"test-client".to_string());
         manager.unsubscribe_client(&"test-client-2".to_string());
@@ -155,9 +183,9 @@ mod tests {
         assert_eq!(2, m1.unwrap().len());
     }
 
-    fn collect_messages(mut receiver: Receiver<Message>) -> tokio::task::JoinHandle<Vec<Message>> {
+    fn collect_messages(mut receiver: Receiver<TopicMessage>) -> tokio::task::JoinHandle<Vec<TopicMessage>> {
         let handle = tokio::spawn(async move {
-            let mut messages: Vec<Message> = Vec::new();
+            let mut messages: Vec<TopicMessage> = Vec::new();
             while let Ok(msg) = receiver.recv().await {
                 messages.push(msg);
             }
