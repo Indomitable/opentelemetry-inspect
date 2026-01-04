@@ -1,0 +1,64 @@
+.details-table {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    margin-bottom: 20px;
+}
+
+@media (prefers-color-scheme: dark) {
+    .details-table {
+        border-color: #333;
+    }
+}
+
+.details-row {
+    display: flex;
+    border-bottom: 1px solid #eee;
+}
+
+@media (prefers-color-scheme: dark) {
+    .details-row {
+        border-bottom-color: #333;
+    }
+}
+
+.details-row:last-child {
+    border-bottom: none; /* Remove border for the last row, not to overlap with table border */
+}
+
+.details-row.header {
+    background: #f9f9f9;
+    font-weight: bold;
+}
+
+@media (prefers-color-scheme: dark) {
+    .details-row.header {
+        background: #2a2a2a;
+    }
+}
+
+.details-row div {
+    padding: 8px;
+    flex: 1;
+    word-break: break-all;
+}
+
+.details-row div:first-child {
+    flex: 0 0 30%;
+    border-right: 1px solid #eee;
+    background: #fafafa;
+    white-space: nowrap;
+}
+
+.details-row div:last-child {
+    flex: 1 1 0;
+    white-space: pre;
+}
+
+@media (prefers-color-scheme: dark) {
+    .details-row div:first-child {
+        border-right-color: #333;
+        background: #252525;
+    }
+}

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import './styles/details-table.css';
 
 import { onMounted, onUnmounted } from 'vue';
 import {useLogsStore} from "./state/logs-store.ts";
