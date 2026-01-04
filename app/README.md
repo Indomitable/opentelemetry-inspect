@@ -1,7 +1,13 @@
-# Tauri + Vue + TypeScript
+### Open Telemetry Inspector
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+# Desktop Application for Inspecting OpenTelemetry Data
 
-## Recommended IDE Setup
+Uses the OpenTelemetry Protocol (OTLP) to receive, decode, and display telemetry data such as traces, metrics, and logs.
+This tool is designed to help developers and DevOps engineers visualize and analyze telemetry data for debugging and performance monitoring.
 
-- [VS Code](https://code.visualstudio.com/) + [Vue - Official](https://marketplace.visualstudio.com/items?itemName=Vue.volar) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+## Features
+- Desktop application built with Tauri and Vue.js
+- Dockerized for easy deployment
+    - Build: `podman build . -f Dockerfile -t opentelemetry-inspect:latest`
+    - Run: `podman run -d --rm -p 4318:4318 --name opentelemetry-inspect opentelemetry-inspect:latest`
+- Receives OpenTelemetry data via OTLP over HTTP on port 4318 supports protobuf and JSON formats

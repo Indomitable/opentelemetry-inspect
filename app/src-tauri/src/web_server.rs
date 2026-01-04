@@ -4,6 +4,8 @@ use axum::response::{IntoResponse, Response};
 use axum::{http, Router};
 use axum::body::Bytes;
 use axum::routing::{get, post};
+use log::info;
+use tower_http::services::ServeDir;
 use prost::{DecodeError, Message as ProstMessage};
 use crate::{opentelemetry, AppState};
 use crate::domain::logs::LogDto;
@@ -23,13 +25,50 @@ fn get_otlp_routes() -> Router<AppState> {
 }
 
 pub async fn init_axum(state: AppState) -> Result<(), Box<dyn std::error::Error>> {
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:4318").await?;
-    let app = Router::new()
+    let addr = "[::]:4318";
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    println!("Axum server listening on http://{}", addr);
+    let mut app = Router::new()
         .route("/ws", get(websocket_handler))
-        .nest("/v1", get_otlp_routes())
-        .with_state(state);
-    axum::serve(listener, app).await?;
+        .nest("/v1", get_otlp_routes());
+
+    if cfg!(feature = "docker") {
+        let static_dir = std::env::var("STATIC_DIR").unwrap_or_else(|_| "../dist".to_string());
+        println!("Serving static files from: {}", static_dir);
+        let serve_dir = ServeDir::new(&static_dir)
+            .fallback(tower_http::services::ServeFile::new(format!("{}/index.html", static_dir)));
+        app = app.fallback_service(serve_dir);
+    }
+
+    let app = app.with_state(state);
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
     Ok(())
+}
+
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
 }
 
 // Resources:

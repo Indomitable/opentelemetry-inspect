@@ -14,7 +14,9 @@ export class WebSocketService {
     private lastPongTimestamp: number = Date.now();
 
     connect() {
-        this.socket = new WebSocket("ws://localhost:4318/ws");
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.hostname || 'localhost';
+        this.socket = new WebSocket(`${protocol}//${host}:4318/ws`);
         this.socket.binaryType = "blob";
 
         this.socket.addEventListener('message', async (event) => {

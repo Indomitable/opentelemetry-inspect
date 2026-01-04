@@ -8,6 +8,17 @@ fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
         "opentelemetry/proto/collector/trace/v1/trace_service.proto",
         "opentelemetry/proto/metrics/v1/metrics.proto",
         "opentelemetry/proto/trace/v1/trace.proto"], &["."])?;
-    tauri_build::build();
+
+    build();
     Ok(())
+}
+
+#[cfg(feature = "docker")]
+fn build() {
+
+}
+
+#[cfg(feature = "tauri")]
+fn build() {
+    tauri_build::build();
 }

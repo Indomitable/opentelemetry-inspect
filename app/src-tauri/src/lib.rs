@@ -6,15 +6,24 @@ mod websocket_hub;
 mod app_state;
 
 use std::sync::{Arc};
+#[cfg(feature = "tauri")]
 use tauri::{Emitter, Manager};
 use tokio::sync::{RwLock};
 use crate::app_state::AppState;
 use crate::subscription_manager::{SubscriptionManager};
 use crate::web_server::init_axum;
 
+pub async fn axum_main() -> Result<(), Box<dyn std::error::Error>> {
+    println!("Starting axum server");
+    let app_state = AppState {
+        subscription_manager: Arc::new(RwLock::new(SubscriptionManager::new()))
+    };
+    init_axum(app_state).await
+}
 
+#[cfg(feature = "tauri")]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
+pub fn tauri_main() {
     let _ = rustls::crypto::ring::default_provider().install_default();
 
     tauri::Builder::default()

@@ -1,0 +1,17 @@
+node_modules/
+src-tauri/target/
+.git
+.gitignore
+README.md
+.env
+.env.local
+dist
+.vite
+*.log
+.DS_Store
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
