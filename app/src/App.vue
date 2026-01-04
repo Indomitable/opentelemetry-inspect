@@ -3,52 +3,24 @@ import './styles/details-table.css';
 
 import { onMounted, onUnmounted } from 'vue';
 import {useLogsStore} from "./state/logs-store.ts";
+import {WebSocketService} from "./services/websocket-service.ts";
+
 const logsStore = useLogsStore();
-
-interface Message {
-  topic: string;
-  payload: string;
-}
-
-let ws: WebSocket | null = null;
+let ws: WebSocketService | null = null;
 
 onMounted(() => {
-  ws = new WebSocket("ws://localhost:4318/ws");
-
-  ws.addEventListener('message', (event) => {
-    let msg = JSON.parse(event.data);
-    if ('client_id' in msg) {
-      console.log('Connected with client id:', msg.client_id);
-      return;
-    }
-    
-    const message = msg as Message;
-    if (message.topic === 'logs') {
-      try {
-        const logData = JSON.parse(message.payload);
-        logsStore.addLog(logData);
-      } catch (e) {
-        console.error('Failed to parse log payload', e);
-      }
-    }
+  ws = new WebSocketService();
+  ws.registerOnLogReceived((log) => {
+    logsStore.addLog(log);
   });
-
-  ws.addEventListener('open', () => {
-    const command = JSON.stringify({
-      command: {
-        "Subscribe": "logs"
-      }
-    });
-    ws?.send(command);
-  });
+  ws.connect();
 });
 
 onUnmounted(() => {
   if (ws) {
-    ws.close();
+    ws.disconnect();
   }
 });
-
 
 </script>
 

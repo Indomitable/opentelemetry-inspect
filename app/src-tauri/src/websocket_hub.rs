@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use axum::body::Bytes;
 use axum::extract::{State, WebSocketUpgrade};
 use axum::extract::ws::{Message, Utf8Bytes, WebSocket};
 use axum::response::IntoResponse;
@@ -49,46 +50,60 @@ async fn handle_websocket(socket: WebSocket, state: AppState) {
             }
         }
     });
-
+    // dispatch pong messages back to websocket client.
     let mut topic_listeners: HashMap<Topic, tokio::task::JoinHandle<()>> = HashMap::new();
 
     // listen for messages from websocket client
     while let Some(Ok(message)) = receiver.next().await {
-        // wait for message from websocket client
-        if let Message::Text(content) = message {
-            if let Ok(command) = serde_json::from_str::<WebSocketCommand>(&content) {
-                match command.command {
-                    Command::Subscribe(topic) => {
-                        if !topic_listeners.contains_key(&topic) {
-                            let mut rx = state.subscription_manager.write().await.subscribe(topic.clone(), client_id.clone());
-                            // create a task to listen for events on this topic.
-                            let message_queue_sender = message_queue_sender.clone();
-                            let listen_handle = tokio::spawn(async move {
-                                while let Ok(message) = rx.recv().await {
-                                    let json = serde_json::to_string(&message).expect("Unable to serialize event.");
-                                    let msg = Utf8Bytes::from(json);
-                                    match message_queue_sender.send(Message::Text(msg)) {
-                                        Ok(_) => {},
-                                        Err(_) => {
-                                            println!("Unable to send message to event queue.");
-                                            break;
+        match message {
+            Message::Binary(msg) => {
+                if msg.len() == 1 && msg[0] == 0x09 {
+                    let message_queue_sender = message_queue_sender.clone();
+                    match message_queue_sender.send(Message::Binary(Bytes::from_static(&[0x0A]))) {
+                        Ok(_) => {},
+                        Err(_) => {
+                            println!("Unable to send message to event queue.");
+                            break;
+                        }
+                    }
+                }
+            },
+            Message::Text(content) => {
+                if let Ok(command) = serde_json::from_str::<WebSocketCommand>(&content) {
+                    match command.command {
+                        Command::Subscribe(topic) => {
+                            if !topic_listeners.contains_key(&topic) {
+                                let mut rx = state.subscription_manager.write().await.subscribe(topic.clone(), client_id.clone());
+                                // create a task to listen for events on this topic.
+                                let message_queue_sender = message_queue_sender.clone();
+                                let listen_handle = tokio::spawn(async move {
+                                    while let Ok(message) = rx.recv().await {
+                                        let json = serde_json::to_string(&message).expect("Unable to serialize event.");
+                                        let msg = Utf8Bytes::from(json);
+                                        match message_queue_sender.send(Message::Text(msg)) {
+                                            Ok(_) => {},
+                                            Err(_) => {
+                                                println!("Unable to send message to event queue.");
+                                                break;
+                                            }
                                         }
                                     }
-                                }
-                            });
+                                });
 
-                            topic_listeners.insert(topic.clone(), listen_handle);
-                        }
-                    },
-                    Command::Unsubscribe(topic) => {
-                        if let Some(handle) = topic_listeners.remove(&topic) {
-                            println!("Unsubscribe {} from: {}", client_id, topic);
-                            handle.abort();
-                            state.subscription_manager.write().await.unsubscribe(&client_id, &topic);
+                                topic_listeners.insert(topic.clone(), listen_handle);
+                            }
+                        },
+                        Command::Unsubscribe(topic) => {
+                            if let Some(handle) = topic_listeners.remove(&topic) {
+                                println!("Unsubscribe {} from: {}", client_id, topic);
+                                handle.abort();
+                                state.subscription_manager.write().await.unsubscribe(&client_id, &topic);
+                            }
                         }
                     }
                 }
             }
+            _ => {}
         }
     }
 

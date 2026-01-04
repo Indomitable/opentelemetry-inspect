@@ -147,7 +147,7 @@ const getLogLevelClass = (logLevel: string) => {
           <h3>Resource Info</h3>
           <resource-details-view :resource="selectedLog!.resource" />
 
-          <h3>Tags</h3>
+          <h3>Attributes</h3>
           <div class="details-table">
             <div class="details-row header">
               <div>Key</div>
