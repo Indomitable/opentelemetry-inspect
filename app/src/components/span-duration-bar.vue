@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type { Span } from '../domain/traces';
 import { durationToString } from '../domain/traces';
+import {TraceDetailsViewModels} from "../viewmodels/trace-details-models.ts";
+import {getSeverityType} from "../domain/logs-exensions.ts";
 
 interface Props {
-  span: Span;
+  span: TraceDetailsViewModels.SpanOrLogModel;
   parentSpan?: Span;
   traceStartTime?: bigint;
   traceEndTime?: bigint;
@@ -48,12 +50,11 @@ const widthPercent = referenceDuration > 0n
 const leftOffset = Math.max(0, Math.min(100, offsetPercent));
 const barWidth = Math.max(0.5, Math.min(100 - leftOffset, widthPercent));
 
-const barColor = () => {
-  // Color based on duration (longer spans get darker/warmer colors)
-  if (spanDuration < 1000000n) return '#4ade80'; // less than 1ms
-  if (spanDuration < 10000000n) return '#60a5fa'; // between 1ms and 10ms
-  if (spanDuration < 100000000n) return '#fbbf24'; // between 10ms and 100ms
-  return '#ef4444'; // greater than 100ms
+const getSpanDurationClass = (duration: bigint) => {
+  if (duration < 1000000n) return 'duration-fast'; // less than 1ms
+  if (duration < 10000000n) return 'duration-medium'; // between 1ms and 10ms
+  if (duration < 100000000n) return 'duration-slow'; // between 10ms and 100ms
+  return 'duration-x-slow'; // greater than 100ms
 };
 </script>
 
@@ -61,17 +62,26 @@ const barColor = () => {
   <div class="span-duration-bar-container">
     <div class="span-duration-bar-track">
       <div
-        class="span-duration-bar-fill"
+        v-if="span.type === 'span'"
+        :class="['span-duration-bar-fill', getSpanDurationClass(span.duration)]"
         :style="{
           left: `${leftOffset}%`,
           width: `${barWidth}%`,
-          backgroundColor: barColor()
         }"
         :title="`${span.name} - ${durationToString(span.duration)}`"
       />
+      <div
+          v-if="span.type === 'log'"
+          :class="['log-duration-bar-fill', getSeverityType(span.severity!)]"
+          :style="{
+            left: `${leftOffset}%`,
+            width: `5px`,
+          }"
+          :title="`${span.severity}: ${span.name}`"
+      />
     </div>
     <div class="span-duration-bar-label">
-      <span class="duration-text">{{ durationToString(spanDuration) }}</span>
+      <span class="duration-text" v-if="span.type === 'span'">{{ durationToString(spanDuration) }}</span>
     </div>
   </div>
 </template>
@@ -104,6 +114,26 @@ const barColor = () => {
   cursor: pointer;
   position: absolute;
 }
+
+.duration-fast { background-color: var(--span-duration-fast);}
+.duration-medium { background-color: var(--span-duration-medium);}
+.duration-slow { background-color: var(--span-duration-slow);}
+.duration-x-slow { background-color: var(--span-duration-x-slow);}
+
+.log-duration-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.2s ease;
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  position: absolute;
+}
+
+.log-duration-bar-fill.debug { background-color: var(--logs-severity-debug); }
+.log-duration-bar-fill.info { background-color: var(--logs-severity-info); }
+.log-duration-bar-fill.warn { background-color: var(--logs-severity-warning); }
+.log-duration-bar-fill.error { background-color: var(--logs-severity-error); }
+.log-duration-bar-fill.critical { background-color: var(--logs-severity-critical); }
 
 .span-duration-bar-fill:hover {
   opacity: 0.8;

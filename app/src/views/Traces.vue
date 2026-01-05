@@ -68,6 +68,8 @@ const selectedSpan = computed(() => {
           dataKey="key"
           :scrollable="true"
           scrollHeight="flex"
+          column-resize-mode="fit"
+          size="small"
           class="p-datatable-sm list-table"
       >
         <template #empty><div class="list-table__empty">No spans recorded.</div></template>
@@ -84,7 +86,7 @@ const selectedSpan = computed(() => {
           <template #body="slotProps">
             <div v-if="slotProps.node.data.children.length > 0 && !slotProps.node.data.parent_span_id">
               <router-link :to="slotProps.node.link" class="link-button">
-                <Button type="button" rounded icon="pi pi-search" severity="secondary" />
+                <Button type="button" rounded icon="pi pi-search" severity="secondary" size="small" />
               </router-link>
             </div>
           </template>

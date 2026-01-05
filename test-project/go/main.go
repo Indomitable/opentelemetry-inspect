@@ -206,6 +206,11 @@ func getTodos(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracer.Start(r.Context(), "getTodos", trace.WithSpanKind(trace.SpanKindServer), trace.WithAttributes(attribute.String("http.method", r.Method)))
 	time.Sleep(1 * time.Millisecond)
 	defer span.End()
+	logger.ErrorContext(ctx, "getTodos - error message", slog.Group("test",
+		slog.Duration("testDuration", 1*time.Second),
+		slog.Int("testInt", 1),
+		slog.Bool("testBool", true),
+	))
 
 	ctx, childSpan := tracer.Start(ctx, "getTodosChild")
 	time.Sleep(2 * time.Millisecond)
@@ -216,7 +221,7 @@ func getTodos(w http.ResponseWriter, r *http.Request) {
 	childChildSpan.End()
 
 	time.Sleep(100 * time.Microsecond)
-	logger.Info("getTodos")
+	logger.InfoContext(ctx, "getTodosChild - log message: {}", "2", slog.String("test", "value"))
 
 	data, _ := json.Marshal(todos)
 	w.Write(data)

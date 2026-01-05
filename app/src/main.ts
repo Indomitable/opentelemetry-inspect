@@ -10,6 +10,7 @@ import Column from "primevue/column";
 import Select from "primevue/select";
 import Aura from '@primevue/themes/aura';
 import 'primeicons/primeicons.css';
+import './styles/variables.css';
 import './styles/details-table.css';
 import './styles/page.css';
 import './styles/list-table.css';

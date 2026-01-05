@@ -1,0 +1,12 @@
+:root {
+    --logs-severity-debug: #9e9e9e;
+    --logs-severity-info: #2196f3;
+    --logs-severity-warning: #ff9800;
+    --logs-severity-error: #f44336;
+    --logs-severity-critical: #8f1212;
+
+    --span-duration-fast: #4ade80;
+    --span-duration-medium: #60a5fa;
+    --span-duration-slow: #fbbf24;
+    --span-duration-x-slow: #ef4444;
+}

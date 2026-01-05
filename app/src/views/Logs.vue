@@ -4,6 +4,7 @@ import {useLogsStore} from "../state/logs-store.ts";
 import {Log} from "../domain/logs.ts";
 import ResourceDetailsView from "../components/resource-details-view.vue";
 import ResourceSelector from "../components/resource-selector.vue";
+import {getSeverityType} from "../domain/logs-exensions.ts";
 
 const logsStore = useLogsStore();
 
@@ -21,33 +22,6 @@ const filteredLogs = computed(() => {
 
   return logsStore.logs;
 });
-
-const getLogLevelClass = (logLevel: string) => {
-  switch (logLevel.toLowerCase()) {
-    case "info":
-    case "information": {
-      return "info";
-    }
-    case "warn":
-    case "warning": {
-      return "warn";
-    }
-    case "error": {
-      return "error";
-    }
-    case "critical":
-    case "fatal": {
-      return "critical";
-    }
-    case "debug":
-    case "trace": {
-      return "debug";
-    }
-    default: {
-      return "";
-    }
-  }
-}
 
 </script>
 
@@ -82,7 +56,7 @@ const getLogLevelClass = (logLevel: string) => {
         </Column>
         <Column field="severity" header="Level" sortable :style="{ width: '120px' }">
           <template #body="slotProps">
-            <span :class="['level', getLogLevelClass(slotProps.data.severity)]">
+            <span :class="['level', getSeverityType(slotProps.data.severity)]">
               {{ slotProps.data.severity }}
             </span>
           </template>
@@ -112,7 +86,7 @@ const getLogLevelClass = (logLevel: string) => {
             </div>
             <div class="details-row">
               <div>Level</div>
-              <div :class="['level', getLogLevelClass(selectedLog!.severity)]">
+              <div :class="['level', getSeverityType(selectedLog!.severity)]">
                 {{ selectedLog.severity }}
               </div>
             </div>
@@ -159,13 +133,9 @@ const getLogLevelClass = (logLevel: string) => {
 </template>
 
 <style scoped>
-
-.level.info { color: #2196f3; }
-.level.error { color: #f44336; }
-.level.critical { color: #d32f2f; }
-.level.warn { color: #ff9800; }
-.level.debug { color: #9c27b0; }
-
-
-
+.level.debug { color: var(--logs-severity-debug); }
+.level.info { color: var(--logs-severity-info); }
+.level.warn { color: var(--logs-severity-warning); }
+.level.error { color: var(--logs-severity-error); }
+.level.critical { color: var(--logs-severity-critical); }
 </style>
