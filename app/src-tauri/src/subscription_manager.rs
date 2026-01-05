@@ -209,6 +209,7 @@ mod tests {
     fn test_message_serialization() {
         let log = LogDto {
             timestamp: Utc.with_ymd_and_hms(2025, 1, 12, 14, 23, 20).unwrap(),
+            time_unix_nano: "1641996200000000000".to_string(),
             message: "test".to_string(),
             scope: "TestScope".to_string(),
             severity: Severity::Error,
@@ -231,6 +232,7 @@ mod tests {
   "topic": "logs",
   "payload": {
     "timestamp": "2025-01-12T14:23:20Z",
+    "time_unix_nano": "1641996200000000000",
     "severity": "Error",
     "message": "test",
     "scope": "TestScope",

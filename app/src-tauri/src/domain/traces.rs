@@ -101,6 +101,8 @@ impl Default for SpanStatus {
 pub struct SpanDto {
     pub start_time: DateTime<Utc>,
     pub end_time: DateTime<Utc>,
+    pub start_time_unix_nano: String,
+    pub end_time_unix_nano: String,
     pub scope: String,
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -169,6 +171,8 @@ impl SpanDto {
         Self {
             start_time: start,
             end_time: end,
+            start_time_unix_nano: span.start_time_unix_nano.to_string(),
+            end_time_unix_nano: span.end_time_unix_nano.to_string(),
             scope: scope_name,
             name: span.name,
             trace_id,

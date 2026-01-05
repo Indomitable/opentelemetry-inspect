@@ -24,6 +24,7 @@ pub enum Severity {
 #[derive(Serialize, Clone, Debug)]
 pub struct LogDto {
     pub timestamp: DateTime<Utc>,
+    pub time_unix_nano: String,
     pub severity: Severity,
     pub message: String,
     pub scope: String,
@@ -64,6 +65,7 @@ impl LogDto {
 
         LogDto {
             timestamp,
+            time_unix_nano: timestamp_nanos.to_string(),
             severity,
             message: log_message,
             scope: scope_name,

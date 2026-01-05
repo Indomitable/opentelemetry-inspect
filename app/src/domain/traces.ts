@@ -3,6 +3,8 @@ import {Resource} from "./resources.ts";
 export interface SpanDto {
     start_time: string;
     end_time: string;
+    start_time_unix_nano: string;
+    end_time_unix_nano: string;
     scope: string;
     name: string;
     trace_id: string;
@@ -36,8 +38,8 @@ export interface Span extends SpanDto {
 }
 
 export function mapSpanDtoToSpan(dto: SpanDto): Span {
-    const start_ns = stringToNs(dto.start_time);
-    const end_ns = stringToNs(dto.end_time);
+    const start_ns = BigInt(dto.start_time_unix_nano);
+    const end_ns = BigInt(dto.end_time_unix_nano);
     return {
         ...dto,
         start_ns,
@@ -47,21 +49,25 @@ export function mapSpanDtoToSpan(dto: SpanDto): Span {
     };
 }
 
-function stringToNs(isoStr: string): bigint {
-    const parts = isoStr.split('.');
-    const seconds = BigInt(Date.parse(parts[0]) / 1000);
-    // Ensure the nanosecond part is exactly 9 digits
-    const nanos = BigInt(parts[1].replace('Z', '').padEnd(9, '0'));
-    return (seconds * 1000000000n) + nanos;
-}
-
 export function durationToString(durationNs: bigint): string {
-    const ms = durationNs / 1000000n;
-    const remainingNanos = durationNs % 1000000n;
+    if (durationNs === 0n) {
+        return '';
+    }
+    const nanosInMs = 1_000_000n;
+    const ms = durationNs / nanosInMs;
+    const remainingNanos = durationNs % nanosInMs;
+
+    const nanoFormat: BigIntToLocaleStringOptions = {
+        unit: 'nanosecond',
+        style: 'unit',
+        unitDisplay: 'short',
+        useGrouping: true
+    };
+    const milliFormat = { ...nanoFormat, unit: 'millisecond' };
 
     if (ms > 0n) {
-        return `${ms}ms ${remainingNanos}ns`;
+        return `${ms.toLocaleString(void 0, milliFormat)} ${remainingNanos.toLocaleString(void 0, nanoFormat)}`;
     } else {
-        return `${remainingNanos}ns`;
+        return remainingNanos.toLocaleString(void 0, nanoFormat);
     }
 }
