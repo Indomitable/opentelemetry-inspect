@@ -19,45 +19,10 @@ export class WebSocketService {
         this.socket = new WebSocket(`${protocol}//${host}:4318/ws`);
         this.socket.binaryType = "blob";
 
-        this.socket.addEventListener('message', async (event) => {
-            if (await WebSocketService.isPong(event)) {
-                this.lastPongTimestamp = Date.now();
-                console.log('Received pong from server');
-                return;
-            }
-            if (typeof event.data !== 'string') {
-                return;
-            }
-            const data = JSON.parse(event.data);
-            if (WebSocketService.isConnectedEvent(data)) {
-                console.log('Connected with client id:', data.client_id);
-                return;
-            }
-
-            if (WebSocketService.isLogsEvent(data)) {
-                if (this.handlers) {
-                    this.handlers.onLogReceived(data.payload);
-                }
-            }
-
-            if (WebSocketService.isTracesEvent(data)) {
-                if (this.handlers) {
-                    this.handlers.onSpanReceived(data.payload);
-                }
-            }
-        });
-
-        this.socket.addEventListener('open', () => {
-            this.reconnectTries = 0; // reset reconnect tries on successful connection
-            this.lastPongTimestamp = Date.now();
-            this.subscribeToTopic('logs');
-            this.subscribeToTopic('traces');
-            this.startHeartbeat();
-        });
-
-        this.socket.addEventListener('error', () => {
-            this.reconnect();
-        });
+        this.socket.addEventListener('message', this.onMessage);
+        this.socket.addEventListener('open', this.onOpen);
+        this.socket.addEventListener('error', this.onError);
+        this.socket.addEventListener('close', this.onClose);
     }
 
     disconnect() {
@@ -67,12 +32,60 @@ export class WebSocketService {
         }
         if (this.socket) {
             this.socket.close();
+            this.socket.removeEventListener('message', this.onMessage);
+            this.socket.removeEventListener('open', this.onOpen);
+            this.socket.removeEventListener('error', this.onError);
+            this.socket.removeEventListener('close', this.onClose);
             this.socket = null;
         }
     }
 
     registerHandlers(handlers: MessageHandlers) {
         this.handlers = handlers;
+    }
+
+    private onMessage = async (event: MessageEvent) => {
+        if (await WebSocketService.isPong(event)) {
+            this.lastPongTimestamp = Date.now();
+            console.log('Received pong from server');
+            return;
+        }
+        if (typeof event.data !== 'string') {
+            return;
+        }
+        const data = JSON.parse(event.data);
+        if (WebSocketService.isConnectedEvent(data)) {
+            console.log('Connected with client id:', data.client_id);
+            return;
+        }
+
+        if (WebSocketService.isLogsEvent(data)) {
+            if (this.handlers) {
+                this.handlers.onLogReceived(data.payload);
+            }
+        }
+
+        if (WebSocketService.isTracesEvent(data)) {
+            if (this.handlers) {
+                this.handlers.onSpanReceived(data.payload);
+            }
+        }
+    };
+
+    private onOpen = () => {
+        this.reconnectTries = 0; // reset reconnect tries on successful connection
+        this.lastPongTimestamp = Date.now();
+        this.subscribeToTopic('logs');
+        this.subscribeToTopic('traces');
+        this.startHeartbeat();
+    };
+
+    private onClose = () => {
+        this.reconnect();
+    };
+
+    private onError = () => {
+        this.reconnect();
     }
 
     private subscribeToTopic(topic: string) {

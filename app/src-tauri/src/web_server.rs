@@ -4,14 +4,12 @@ use axum::response::{IntoResponse, Response};
 use axum::{http, Router};
 use axum::body::Bytes;
 use axum::routing::{get, post};
-use log::info;
 use tower_http::services::ServeDir;
 use prost::{DecodeError, Message as ProstMessage};
-use crate::{opentelemetry, AppState};
-use crate::domain::logs::LogDto;
-use crate::domain::traces::SpanDto;
+use crate::{AppState};
 use crate::opentelemetry::proto::collector::logs::v1::{ExportLogsServiceRequest, ExportLogsServiceResponse};
 use crate::opentelemetry::proto::collector::trace::v1::{ExportTraceServiceRequest, ExportTraceServiceResponse};
+use crate::server::shutdown_signal;
 use crate::websocket_hub::websocket_handler;
 
 const PROTOBUF_CONTENT_TYPE: &str = "application/x-protobuf";
@@ -47,30 +45,6 @@ pub async fn init_axum(state: AppState) -> Result<(), Box<dyn std::error::Error>
     Ok(())
 }
 
-async fn shutdown_signal() {
-    let ctrl_c = async {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("failed to install Ctrl+C handler");
-    };
-
-    #[cfg(unix)]
-    let terminate = async {
-        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-            .expect("failed to install signal handler")
-            .recv()
-            .await;
-    };
-
-    #[cfg(not(unix))]
-    let terminate = std::future::pending::<()>();
-
-    tokio::select! {
-        _ = ctrl_c => {},
-        _ = terminate => {},
-    }
-}
-
 // Resources:
 // Proto: https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/collector/logs/v1/logs_service.proto
 // Collector-Go: https://github.com/open-telemetry/opentelemetry-collector/blob/main/receiver/otlpreceiver/otlphttp.go
@@ -81,16 +55,7 @@ async fn handle_logs(State(state): State<AppState>, request: axum::extract::Requ
                             |body| serde_json::from_slice(&body)).await;
     match r {
         Ok(r) => {
-            for resource_log in r.resource_logs {
-                let resource = resource_log.resource.as_ref();
-                for scope_log in resource_log.scope_logs {
-                    let scope = scope_log.scope.as_ref();
-                    for log_record in scope_log.log_records {
-                        let dto = LogDto::from_otlp(log_record, scope, resource);
-                        let _ = state.subscription_manager.read().await.publish_log(dto);
-                    }
-                }
-            }
+            state.request_processor.process_logs(r).await;
 
             let mut bytes = Vec::new();
             let export_logs_response = ExportLogsServiceResponse::default();
@@ -111,16 +76,7 @@ async fn handle_traces(State(state): State<AppState>, request: axum::extract::Re
                             |body| serde_json::from_slice(&body)).await;
     match r {
         Ok(request) => {
-            for resource_span in request.resource_spans {
-                let resource = resource_span.resource.as_ref();
-                for scope_span in resource_span.scope_spans {
-                    let scope = scope_span.scope.as_ref();
-                    for span in scope_span.spans {
-                        let dto = SpanDto::from_otlp(span, scope, resource);
-                        let _ = state.subscription_manager.read().await.publish_span(dto);
-                    }
-                }
-            }
+            state.request_processor.process_traces(request).await;
 
             let mut bytes = Vec::new();
             let export_traces_response = ExportTraceServiceResponse::default();
