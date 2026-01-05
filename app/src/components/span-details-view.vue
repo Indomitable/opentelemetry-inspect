@@ -1,0 +1,102 @@
+<script setup lang="ts">
+import ResourceDetailsView from "./resource-details-view.vue";
+import {Span} from "../domain/traces.ts";
+const { span } = defineProps<{ span: Span }>();
+const emits = defineEmits<{
+  (e: 'close'): void;
+}>();
+</script>
+
+<template>
+  <section class="details-panel">
+    <div class="details-header">
+      <button class="close-btn" @click="emits('close')">×</button>
+      <h2>Span Details</h2>
+    </div>
+
+    <div class="details-content">
+      <h3>Span</h3>
+      <div class="details-table">
+        <div class="details-row header">
+          <div>Key</div>
+          <div>Value</div>
+        </div>
+        <div class="details-row">
+          <div>Start Time</div>
+          <div>{{ span.start_time }}</div>
+        </div>
+        <div class="details-row">
+          <div>End Time</div>
+          <div>{{ span.end_time }}</div>
+        </div>
+        <div class="details-row">
+          <div>Scope</div>
+          <div>{{ span.scope }}</div>
+        </div>
+        <div class="details-row">
+          <div>Name</div>
+          <div>{{ span.name }}</div>
+        </div>
+        <div class="details-row">
+          <div>Kind</div>
+          <div>{{ span.kind }}</div>
+        </div>
+        <div class="details-row">
+          <div>Status Message</div>
+          <div>{{ span.status.message }}</div>
+        </div>
+        <div class="details-row">
+          <div>Status Code</div>
+          <div>{{ span.status.code }}</div>
+        </div>
+        <div class="details-row" v-if="span?.trace_id">
+          <div>Trace Id</div>
+          <div>{{ span.trace_id }}</div>
+        </div>
+        <div class="details-row" v-if="span?.parent_span_id">
+          <div>Parent Span Id</div>
+          <div>{{ span.parent_span_id }}</div>
+        </div>
+        <div class="details-row" v-if="span?.span_id">
+          <div>Span Id</div>
+          <div>{{ span.span_id }}</div>
+        </div>
+      </div>
+
+      <h3>Resource Info</h3>
+      <resource-details-view :resource="span.resource" />
+
+      <h3 v-if="span!.events.length">Events</h3>
+      <div class="details-table" v-for="event in span.events" :key="event.name">
+        <div class="details-row header">
+          <div>Key</div>
+          <div>Value</div>
+        </div>
+        <div class="details-row">
+          <div>Name</div>
+          <div>{{ event.name }}</div>
+        </div>
+        <div class="details-row">
+          <div>Timestamp</div>
+          <div>{{ event.timestamp }}</div>
+        </div>
+        <div v-for="(value, key) in event.attributes" :key="key" class="details-row">
+          <div>{{ key }}</div>
+          <div>{{ value }}</div>
+        </div>
+      </div>
+
+      <h3 v-if="span.tags.length">Attributes</h3>
+      <div class="details-table" v-if="span.tags.length">
+        <div class="details-row header">
+          <div>Key</div>
+          <div>Value</div>
+        </div>
+        <div v-for="(value, key) in span.tags" :key="key" class="details-row">
+          <div>{{ key }}</div>
+          <div>{{ value }}</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</template>

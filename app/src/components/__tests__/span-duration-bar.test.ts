@@ -2,8 +2,22 @@ import { describe, it, expect } from 'vitest';
 import { mount } from '@vue/test-utils';
 import SpanDurationBar from '../span-duration-bar.vue';
 import type { Span } from '../../domain/traces';
+import {TraceDetailsViewModels} from "../../viewmodels/trace-details-models.ts";
 
 // Helper function to create a mock span
+function createMockSpanModel(overrides: Partial<TraceDetailsViewModels.SpanModel> = {}): TraceDetailsViewModels.SpanModel {
+  return {
+    type: 'span',
+    name: 'test-span',
+    trace_id: 'trace-1',
+    span_id: 'span-1',
+    start_ns: 1000000000n,
+    end_ns: 2000000000n,
+    duration: 1000000000n,
+    ...overrides
+  };
+}
+
 function createMockSpan(overrides: Partial<Span> = {}): Span {
   return {
     start_time: '2024-01-01T00:00:00.000000000Z',
@@ -40,7 +54,7 @@ function createMockSpan(overrides: Partial<Span> = {}): Span {
 describe('SpanDurationBar Component', () => {
   describe('Bar Positioning and Width Calculations', () => {
     it('should render a bar at 100% width for root span (no parent)', () => {
-      const span = createMockSpan({
+      const span = createMockSpanModel({
         start_ns: 1000000000n,
         end_ns: 2000000000n,
         duration: 1000000000n
@@ -80,7 +94,7 @@ describe('SpanDurationBar Component', () => {
       const childStart = parentStart + 10000000n; // starts 10ms after parent
       const childDuration = 20000000n; // 20ms
 
-      const child = createMockSpan({
+      const child = createMockSpanModel({
         start_ns: childStart,
         duration: childDuration,
         end_ns: childStart + childDuration,
@@ -114,7 +128,7 @@ describe('SpanDurationBar Component', () => {
         name: 'parent-span'
       });
 
-      const child = createMockSpan({
+      const child = createMockSpanModel({
         start_ns: parentStart, // same as parent
         duration: parentDuration / 2n, // 50ms
         end_ns: parentStart + (parentDuration / 2n),
@@ -151,7 +165,7 @@ describe('SpanDurationBar Component', () => {
       const childStart = parentStart + 90000000n; // 90ms after parent start
       const childDuration = 10000000n; // 10ms
 
-      const child = createMockSpan({
+      const child = createMockSpanModel({
         start_ns: childStart,
         duration: childDuration,
         end_ns: childStart + childDuration,
@@ -188,7 +202,7 @@ describe('SpanDurationBar Component', () => {
       const childStart = parentStart + 1000000n; // 1ms after parent start
       const childDuration = 1n; // 1 nanosecond (extremely small)
 
-      const child = createMockSpan({
+      const child = createMockSpanModel({
         start_ns: childStart,
         duration: childDuration,
         end_ns: childStart + childDuration,
@@ -222,7 +236,7 @@ describe('SpanDurationBar Component', () => {
         name: 'parent-span'
       });
 
-      const child = createMockSpan({
+      const child = createMockSpanModel({
         start_ns: parentStart - 1000000n, // starts BEFORE parent (shouldn't happen)
         duration: 10000000n,
         end_ns: parentStart + 9000000n,
@@ -256,7 +270,7 @@ describe('SpanDurationBar Component', () => {
         name: 'parent-span'
       });
 
-      const child = createMockSpan({
+      const child = createMockSpanModel({
         start_ns: parentStart + 80000000n, // starts 80% in
         duration: 50000000n, // extends 50% duration (would go to 130% end)
         end_ns: parentStart + 130000000n,
@@ -282,7 +296,7 @@ describe('SpanDurationBar Component', () => {
 
   describe('Color Assignment Based on Duration', () => {
     it('should use green color for spans < 1ms', () => {
-      const span = createMockSpan({
+      const span = createMockSpanModel({
         duration: 500000n // 0.5ms
       });
 
@@ -291,13 +305,13 @@ describe('SpanDurationBar Component', () => {
       });
 
       const bar = wrapper.find('.span-duration-bar-fill');
-      const styles = bar.attributes('style');
+      const classes = bar.classes();
 
-      expect(styles).toContain('background-color: #4ade80');
+      expect(classes).toContain('duration-fast');
     });
 
     it('should use blue color for spans between 1ms and 10ms', () => {
-      const span = createMockSpan({
+      const span = createMockSpanModel({
         duration: 5000000n // 5ms
       });
 
@@ -306,13 +320,13 @@ describe('SpanDurationBar Component', () => {
       });
 
       const bar = wrapper.find('.span-duration-bar-fill');
-      const styles = bar.attributes('style');
+      const classes = bar.classes();
 
-      expect(styles).toContain('background-color: #60a5fa');
+      expect(classes).toContain('duration-medium');
     });
 
     it('should use amber color for spans between 10ms and 100ms', () => {
-      const span = createMockSpan({
+      const span = createMockSpanModel({
         duration: 50000000n // 50ms
       });
 
@@ -321,13 +335,13 @@ describe('SpanDurationBar Component', () => {
       });
 
       const bar = wrapper.find('.span-duration-bar-fill');
-      const styles = bar.attributes('style');
+      const classes = bar.classes();
 
-      expect(styles).toContain('background-color: #fbbf24');
+      expect(classes).toContain('duration-slow');
     });
 
     it('should use red color for spans >= 100ms', () => {
-      const span = createMockSpan({
+      const span = createMockSpanModel({
         duration: 200000000n // 200ms
       });
 
@@ -336,9 +350,9 @@ describe('SpanDurationBar Component', () => {
       });
 
       const bar = wrapper.find('.span-duration-bar-fill');
-      const styles = bar.attributes('style');
+      const classes = bar.classes();
 
-      expect(styles).toContain('background-color: #ef4444');
+      expect(classes).toContain('duration-x-slow');
     });
   });
 
@@ -355,7 +369,7 @@ describe('SpanDurationBar Component', () => {
       });
 
       // Child 1: 10-30ms (left: 10%, width: 20%)
-      const child1 = createMockSpan({
+      const child1 = createMockSpanModel({
         start_ns: parentStart + 10000000n,
         duration: 20000000n,
         end_ns: parentStart + 30000000n,
@@ -364,7 +378,7 @@ describe('SpanDurationBar Component', () => {
       });
 
       // Child 2: 40-60ms (left: 40%, width: 20%)
-      const child2 = createMockSpan({
+      const child2 = createMockSpanModel({
         start_ns: parentStart + 40000000n,
         duration: 20000000n,
         end_ns: parentStart + 60000000n,
@@ -399,7 +413,7 @@ describe('SpanDurationBar Component', () => {
 
   describe('Label Display', () => {
     it('should display the correct duration in the label', () => {
-      const span = createMockSpan({
+      const span = createMockSpanModel({
         duration: 50000000n // 50ms
       });
 
@@ -408,11 +422,11 @@ describe('SpanDurationBar Component', () => {
       });
 
       const label = wrapper.find('.duration-text');
-      expect(label.text()).toContain('50ms');
+      expect(label.text()).toContain('50 ms 0 ns');
     });
 
     it('should display duration in nanoseconds for very small spans', () => {
-      const span = createMockSpan({
+      const span = createMockSpanModel({
         duration: 500n // 500ns
       });
 
@@ -427,7 +441,7 @@ describe('SpanDurationBar Component', () => {
 
   describe('Tooltip', () => {
     it('should set tooltip with span name and duration', () => {
-      const span = createMockSpan({
+      const span = createMockSpanModel({
         name: 'my-operation',
         duration: 50000000n // 50ms
       });
@@ -440,7 +454,7 @@ describe('SpanDurationBar Component', () => {
       const title = bar.attributes('title');
 
       expect(title).toContain('my-operation');
-      expect(title).toContain('50ms');
+      expect(title).toContain('50 ms 0 ns');
     });
   });
 
@@ -449,7 +463,7 @@ describe('SpanDurationBar Component', () => {
       const traceStart = 0n;
       const traceEnd = 100000000n; // 100ms total trace duration
 
-      const span = createMockSpan({
+      const span = createMockSpanModel({
         start_ns: 10000000n, // 10ms into trace
         duration: 20000000n, // 20ms duration
         end_ns: 30000000n
@@ -482,7 +496,7 @@ describe('SpanDurationBar Component', () => {
         name: 'parent-span'
       });
 
-      const child = createMockSpan({
+      const child = createMockSpanModel({
         start_ns: parentStart + 10000000n,
         duration: 20000000n,
         end_ns: parentStart + 30000000n,

@@ -2,9 +2,9 @@
 import { ref, computed } from 'vue';
 import {useLogsStore} from "../state/logs-store.ts";
 import {Log} from "../domain/logs.ts";
-import ResourceDetailsView from "../components/resource-details-view.vue";
 import ResourceSelector from "../components/resource-selector.vue";
 import {getSeverityType} from "../domain/logs-exensions.ts";
+import LogsDetailsView from "../components/logs-details-view.vue";
 
 const logsStore = useLogsStore();
 
@@ -22,6 +22,10 @@ const filteredLogs = computed(() => {
 
   return logsStore.logs;
 });
+
+const closeDetails = () => {
+  selectedLog.value = null;
+};
 
 </script>
 
@@ -67,75 +71,15 @@ const filteredLogs = computed(() => {
     </div>
 
     <Transition name="slide">
-      <section v-if="selectedLog" class="details-panel">
-        <div class="details-header">
-          <button class="close-btn" @click="selectedLog = null">×</button>
-          <h2>Log Details</h2>
-        </div>
-        
-        <div class="details-content">
-          <h3>Log Message</h3>
-          <div class="details-table">
-            <div class="details-row header">
-              <div>Key</div>
-              <div>Value</div>
-            </div>
-            <div class="details-row">
-              <div>Timestamp</div>
-              <div>{{ selectedLog.timestamp }}</div>
-            </div>
-            <div class="details-row">
-              <div>Level</div>
-              <div :class="['level', getSeverityType(selectedLog!.severity)]">
-                {{ selectedLog.severity }}
-              </div>
-            </div>
-            <div class="details-row">
-              <div>Scope</div>
-              <div>{{ selectedLog.scope }}</div>
-            </div>
-            <div class="details-row">
-              <div>Message</div>
-              <div>{{ selectedLog.message }}</div>
-            </div>
-            <div class="details-row" v-if="selectedLog?.trace_id">
-              <div>Trace Id</div>
-              <div>{{ selectedLog.trace_id }}</div>
-            </div>
-            <div class="details-row" v-if="selectedLog?.span_id">
-              <div>Span Id</div>
-              <div>{{ selectedLog.span_id }}</div>
-            </div>
-            <div class="details-row" v-if="selectedLog?.event_name">
-              <div>Event Name</div>
-              <div>{{ selectedLog.event_name }}</div>
-            </div>
-          </div>
-
-          <h3>Resource Info</h3>
-          <resource-details-view :resource="selectedLog!.resource" />
-
-          <h3 v-if="selectedLog!.tags.length">Attributes</h3>
-          <div class="details-table" v-if="selectedLog!.tags.length">
-            <div class="details-row header">
-              <div>Key</div>
-              <div>Value</div>
-            </div>
-            <div v-for="(value, key) in selectedLog!.tags" :key="key" class="details-row">
-              <div>{{ key }}</div>
-              <div>{{ value }}</div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <logs-details-view :log="selectedLog" v-if="selectedLog" @close="closeDetails" />
     </Transition>
   </div>
 </template>
 
 <style scoped>
-.level.debug { color: var(--logs-severity-debug); }
-.level.info { color: var(--logs-severity-info); }
-.level.warn { color: var(--logs-severity-warning); }
-.level.error { color: var(--logs-severity-error); }
-.level.critical { color: var(--logs-severity-critical); }
+:deep(.level.debug) { color: var(--logs-severity-debug); }
+:deep(.level.info) { color: var(--logs-severity-info); }
+:deep(.level.warn) { color: var(--logs-severity-warning); }
+:deep(.level.error) { color: var(--logs-severity-error); }
+:deep(.level.critical) { color: var(--logs-severity-critical); }
 </style>

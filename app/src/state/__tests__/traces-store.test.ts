@@ -18,6 +18,8 @@ describe('TracesStore', () => {
   const createMockSpanDto = (overrides: Partial<SpanDto> = {}): SpanDto => ({
     start_time: '2024-01-01T00:00:00.000000000Z',
     end_time: '2024-01-01T00:00:01.000000000Z',
+    start_time_unix_nano: "1704067200000000000",
+    end_time_unix_nano: "1704067201000000000",
     scope: 'test.scope',
     name: 'test-span',
     trace_id: 'trace-1',

@@ -1,13 +1,13 @@
-import { createApp } from "vue";
+import {createApp, defineAsyncComponent} from "vue";
 import App from "./App.vue";
 import router from "./router";
 import PrimeVue from 'primevue/config';
 import {createPinia} from "pinia";
-import Button from "primevue/button";
-import DataTable from "primevue/datatable";
-import TreeTable from "primevue/treetable";
+// import Button from "primevue/button";
+// import DataTable from "primevue/datatable";
+// import TreeTable from "primevue/treetable";
 import Column from "primevue/column";
-import Select from "primevue/select";
+// import Select from "primevue/select";
 import Aura from '@primevue/themes/aura';
 import 'primeicons/primeicons.css';
 import './styles/variables.css';
@@ -27,9 +27,9 @@ app.use(PrimeVue, {
         }
     }
 });
-app.component('Button', Button);
-app.component('DataTable', DataTable);
-app.component('TreeTable', TreeTable);
+app.component('Button', defineAsyncComponent(() => import('primevue/button')));
+app.component('DataTable', defineAsyncComponent(() => import('primevue/datatable')));
+app.component('TreeTable', defineAsyncComponent(() => import('primevue/treetable')));
 app.component('Column', Column);
-app.component('Select', Select);
+app.component('Select', defineAsyncComponent(() => import('primevue/select')));
 app.mount("#app");
