@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import Select from "primevue/select";
 import {computed, ref} from "vue";
 import {useResourceStore} from "../state/resource-store.ts";
 

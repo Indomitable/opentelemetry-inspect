@@ -57,8 +57,8 @@ describe('TracesStore', () => {
 
       // Check span is in index
       const key = 'trace-1-root-span';
-      expect(store._index[key]).toBeDefined();
-      expect(store._index[key].span_id).toBe('root-span');
+      expect(store.index[key]).toBeDefined();
+      expect(store.index[key].span_id).toBe('root-span');
 
       // Should not be in orphans
       expect(Object.keys(store._orphans)).toHaveLength(0);
@@ -116,7 +116,7 @@ describe('TracesStore', () => {
 
       // Child should be in index
       const childKey = 'trace-1-child-span';
-      expect(store._index[childKey]).toBeDefined();
+      expect(store.index[childKey]).toBeDefined();
     });
 
     it('should add multiple children to same parent', () => {
@@ -192,7 +192,7 @@ describe('TracesStore', () => {
 
       // Span should be in index
       const key = 'trace-1-orphan-child';
-      expect(store._index[key]).toBeDefined();
+      expect(store.index[key]).toBeDefined();
 
       // Span should be registered in orphans under parent key
       const parentKey = 'trace-1-missing-parent';
@@ -360,8 +360,8 @@ describe('TracesStore', () => {
       store.addSpan(spanDto);
 
       const compositeKey = 'trace-abc-span-xyz';
-      expect(store._index[compositeKey]).toBeDefined();
-      expect(store._index[compositeKey].span_id).toBe('span-xyz');
+      expect(store.index[compositeKey]).toBeDefined();
+      expect(store.index[compositeKey].span_id).toBe('span-xyz');
     });
 
     it('should prevent duplicate spans', () => {
@@ -400,8 +400,8 @@ describe('TracesStore', () => {
       expect(store.spans).toHaveLength(2);
 
       // Should have different composite keys
-      expect(store._index['trace-1-span-x']).toBeDefined();
-      expect(store._index['trace-2-span-x']).toBeDefined();
+      expect(store.index['trace-1-span-x']).toBeDefined();
+      expect(store.index['trace-2-span-x']).toBeDefined();
     });
   });
 

@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import DataTable from 'primevue/datatable';
-import Column from 'primevue/column';
 import {useLogsStore} from "../state/logs-store.ts";
 import {Log} from "../domain/logs.ts";
 import ResourceDetailsView from "../components/resource-details-view.vue";

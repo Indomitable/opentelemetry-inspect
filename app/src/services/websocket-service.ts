@@ -101,7 +101,7 @@ export class WebSocketService {
     }
 
     private startHeartbeat() {
-        this.pingIntervalId = setInterval(() => {
+        this.pingIntervalId = window.setInterval(() => {
             if (Date.now() - this.lastPongTimestamp > 60000) {
                 console.warn('No pong received in the last 60 seconds, reconnecting...');
                 this.reconnect();

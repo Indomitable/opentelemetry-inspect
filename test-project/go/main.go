@@ -204,11 +204,18 @@ func newLoggerProvider(ctx context.Context, resource *resource.Resource) (*sdklo
 
 func getTodos(w http.ResponseWriter, r *http.Request) {
 	ctx, span := tracer.Start(r.Context(), "getTodos", trace.WithSpanKind(trace.SpanKindServer), trace.WithAttributes(attribute.String("http.method", r.Method)))
+	time.Sleep(1 * time.Millisecond)
 	defer span.End()
 
-	_, childSpan := tracer.Start(ctx, "getTodosChild")
+	ctx, childSpan := tracer.Start(ctx, "getTodosChild")
+	time.Sleep(2 * time.Millisecond)
 	defer childSpan.End()
 
+	_, childChildSpan := tracer.Start(ctx, "getTodosChildChild")
+	time.Sleep(1 * time.Millisecond)
+	childChildSpan.End()
+
+	time.Sleep(100 * time.Microsecond)
 	logger.Info("getTodos")
 
 	data, _ := json.Marshal(todos)

@@ -1,13 +1,11 @@
 <script setup lang="ts">
-import TreeTable, {TreeTableSelectionKeys} from "primevue/treetable";
-import Column from "primevue/column";
+import type {TreeTableSelectionKeys} from "primevue/treetable";
 import ResourceSelector from "../components/resource-selector.vue";
 import {useTracesStore} from "../state/traces-store.ts";
 import {durationToString, Span} from "../domain/traces.ts";
 import {computed, ref} from "vue";
 import ResourceDetailsView from "../components/resource-details-view.vue";
-import {TreeNode} from "primevue/treenode";
-import {Button} from "primevue";
+import type {TreeNode} from "primevue/treenode";
 
 const tracesStore = useTracesStore();
 const selectedInstanceId = ref<string>('-');
@@ -32,7 +30,8 @@ function spanToNode(span: Span): TreeNode {
     data: span,
     children: span.children.map(spanToNode),
     leaf: !span.children.length,
-    selectable: true
+    selectable: true,
+    link: `traces/${span.trace_id}`,
   };
 }
 
@@ -83,8 +82,10 @@ const selectedSpan = computed(() => {
         <Column field="status.code" header="Status" :style="{ width: '80px' }" />
         <Column style="width: 10rem" >
           <template #body="slotProps">
-            <div v-if="slotProps.node.data.children.length > 0">
-              <Button type="button" icon="pi pi-search" rounded severity="secondary" />
+            <div v-if="slotProps.node.data.children.length > 0 && !slotProps.node.data.parent_span_id">
+              <router-link :to="slotProps.node.link" class="link-button">
+                <Button type="button" rounded icon="pi pi-search" severity="secondary" />
+              </router-link>
             </div>
           </template>
         </Column>
