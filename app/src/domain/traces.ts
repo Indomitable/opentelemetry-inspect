@@ -32,6 +32,7 @@ export interface Span extends SpanDto {
     start_ns: bigint;
     end_ns: bigint;
     duration: bigint;
+    children: Span[];
 }
 
 export function mapSpanDtoToSpan(dto: SpanDto): Span {
@@ -42,6 +43,7 @@ export function mapSpanDtoToSpan(dto: SpanDto): Span {
         start_ns,
         end_ns,
         duration: end_ns - start_ns,
+        children: []
     };
 }
 

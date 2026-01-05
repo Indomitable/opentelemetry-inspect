@@ -43,7 +43,7 @@ var todos []Todo
 
 func main() {
 	// Handle SIGINT (CTRL+C) gracefully.
-	log.Printf("Starting application...")
+	log.Printf("Starting application... http://localhost:43521")
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
@@ -203,12 +203,16 @@ func newLoggerProvider(ctx context.Context, resource *resource.Resource) (*sdklo
 }
 
 func getTodos(w http.ResponseWriter, r *http.Request) {
-	_, span := tracer.Start(r.Context(), "getTodos", trace.WithSpanKind(trace.SpanKindServer), trace.WithAttributes(attribute.String("http.method", r.Method)))
+	ctx, span := tracer.Start(r.Context(), "getTodos", trace.WithSpanKind(trace.SpanKindServer), trace.WithAttributes(attribute.String("http.method", r.Method)))
 	defer span.End()
+
+	_, childSpan := tracer.Start(ctx, "getTodosChild")
+	defer childSpan.End()
+
 	logger.Info("getTodos")
 
-	json, _ := json.Marshal(todos)
-	w.Write(json)
+	data, _ := json.Marshal(todos)
+	w.Write(data)
 }
 
 func createTodo(w http.ResponseWriter, r *http.Request) {

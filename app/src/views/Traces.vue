@@ -1,26 +1,53 @@
 <script setup lang="ts">
-import DataTable from "primevue/datatable";
+import TreeTable, {TreeTableSelectionKeys} from "primevue/treetable";
 import Column from "primevue/column";
 import ResourceSelector from "../components/resource-selector.vue";
 import {useTracesStore} from "../state/traces-store.ts";
 import {durationToString, Span} from "../domain/traces.ts";
 import {computed, ref} from "vue";
 import ResourceDetailsView from "../components/resource-details-view.vue";
+import {TreeNode} from "primevue/treenode";
+import {Button} from "primevue";
 
 const tracesStore = useTracesStore();
-const selectedSpan = ref<Span | null>(null);
 const selectedInstanceId = ref<string>('-');
+const selectedNode = ref<any>(null);
+const selectedKey = ref<TreeTableSelectionKeys | undefined>(undefined);
 
 const filterSpans = (instanceId: string) => {
   selectedInstanceId.value = instanceId;
 };
 
-const filteredSpans = computed(() => {
+const filteredRoots = computed(() => {
   if (selectedInstanceId.value !== '-') {
-    return tracesStore.spans;//.filter(selectedInstanceId.value);
+    return tracesStore.spans.filter(s => s.resource.service_instance_id === selectedInstanceId.value);
   }
-
   return tracesStore.spans;
+});
+
+// map Span tree to PrimeVue TreeNode[] shape
+function spanToNode(span: Span): TreeNode {
+  return {
+    key: `${span.trace_id}-${span.span_id}`,
+    data: span,
+    children: span.children.map(spanToNode),
+    leaf: !span.children.length,
+    selectable: true
+  };
+}
+
+const treeNodes = computed(() => {
+  return filteredRoots.value.map(spanToNode);
+});
+
+const selectedSpan = computed(() => {
+   if (selectedKey.value) {
+     const keys = Object.keys(selectedKey.value);
+      if (keys.length > 0) {
+        const key = keys[0];
+        return tracesStore.index[key];
+      }
+   }
 });
 
 </script>
@@ -34,39 +61,40 @@ const filteredSpans = computed(() => {
         </div>
       </div>
 
-      <DataTable
-          v-model:selection="selectedSpan"
-          :value="filteredSpans"
-          selectionMode="single"
-          dataKey="span_id"
+      <TreeTable
+          :value="treeNodes"
+          selection-mode="single"
+          v-model:selection-keys="selectedKey"
+          :selection="selectedNode"
+          dataKey="key"
           :scrollable="true"
           scrollHeight="flex"
-          resizableColumns
-          columnResizeMode="fit"
-          sortField="start_time"
-          :sortOrder="-1"
           class="p-datatable-sm list-table"
       >
         <template #empty><div class="list-table__empty">No spans recorded.</div></template>
-        <Column field="scope" header="Scope" sortable :style="{ width: '150px' }" />
-        <Column field="name" header="Name" sortable :style="{ width: '150px' }" />
-        <Column header="Duration" sortable :style="{ width: '120px' }">
+        <Column field="name" header="Name" expander :style="{ width: '150px' }" />
+        <Column field="scope" header="Scope" :style="{ width: '150px' }" />
+        <Column header="Duration" :style="{ width: '120px' }">
           <template #body="slotProps">
-            {{ durationToString(slotProps.data.duration) }}
+            {{ durationToString(slotProps.node.data.duration) }}
           </template>
         </Column>
-        <Column field="kind" header="Kind" sortable :style="{ width: '80px' }" />
-        <Column field="status.code" header="Status" sortable :style="{ width: '80px' }" />
-        <Column field="trace_id" header="Trace Id" sortable :style="{ width: '150px' }" />
-        <Column field="span_id" header="Span Id" sortable :style="{ width: '150px' }" />
-        <Column field="parent_span_id" header="Parent Span Id" sortable :style="{ width: '150px' }" />
-      </DataTable>
+        <Column field="kind" header="Kind" :style="{ width: '80px' }" />
+        <Column field="status.code" header="Status" :style="{ width: '80px' }" />
+        <Column style="width: 10rem" >
+          <template #body="slotProps">
+            <div v-if="slotProps.node.data.children.length > 0">
+              <Button type="button" icon="pi pi-search" rounded severity="secondary" />
+            </div>
+          </template>
+        </Column>
+      </TreeTable>
     </div>
 
     <Transition name="slide">
       <section v-if="selectedSpan" class="details-panel">
         <div class="details-header">
-          <button class="close-btn" @click="selectedSpan = null">×</button>
+          <button class="close-btn" @click="selectedSpan = undefined">×</button>
           <h2>Span Details</h2>
         </div>
 

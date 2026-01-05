@@ -1,8 +1,4 @@
 <script setup lang="ts">
-import './styles/details-table.css';
-import './styles/page.css';
-import './styles/list-table.css';
-
 import { onMounted, onUnmounted } from 'vue';
 import {useLogsStore} from "./state/logs-store.ts";
 import {WebSocketService} from "./services/websocket-service.ts";
