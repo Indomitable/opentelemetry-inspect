@@ -2,11 +2,13 @@
 import {Log} from "../domain/logs.ts";
 import {getSeverityType} from "../domain/logs-exensions.ts";
 import ResourceDetailsView from "./resource-details-view.vue";
+import {computed} from "vue";
 
 const { log } = defineProps<{ log: Log }>();
 const emits = defineEmits<{
   (e: 'close'): void;
 }>();
+const attributes = computed(() => Object.entries(log.tags));
 </script>
 
 <template>
@@ -58,13 +60,13 @@ const emits = defineEmits<{
       <h3>Resource Info</h3>
       <resource-details-view :resource="log.resource" />
 
-      <h3 v-if="log!.tags.length">Attributes</h3>
-      <div class="details-table" v-if="log.tags.length">
+      <h3 v-if="attributes.length">Attributes</h3>
+      <div class="details-table" v-if="attributes.length">
         <div class="details-row header">
           <div>Key</div>
           <div>Value</div>
         </div>
-        <div v-for="(value, key) in log.tags" :key="key" class="details-row">
+        <div v-for="[key, value] in attributes" :key="key" class="details-row">
           <div>{{ key }}</div>
           <div>{{ value }}</div>
         </div>

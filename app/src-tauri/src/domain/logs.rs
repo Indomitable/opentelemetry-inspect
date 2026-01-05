@@ -1,7 +1,7 @@
 use serde::{Serialize};
 use std::collections::HashMap;
 use chrono::{DateTime, Utc, TimeZone};
-use crate::domain::{any_value_to_string, any_value_to_string_ref, extract_tags};
+use crate::domain::{any_value_to_string_optional, extract_tags};
 use crate::domain::resource::ResourceInfo;
 use super::traces::{SpanId, TraceId};
 use crate::opentelemetry::proto::logs::v1::LogRecord;
@@ -53,7 +53,7 @@ impl LogDto {
         let timestamp = Utc.timestamp_nanos(timestamp_nanos as i64);
 
         let severity = get_severity(&record);
-        let log_message = record.body.map(any_value_to_string).unwrap_or_default();
+        let log_message = any_value_to_string_optional(record.body.as_ref());
         let scope_name = scope.map(|s| s.name.clone()).unwrap_or_default();
         let trace_id = TraceId::try_from(&record.trace_id).ok();
         let span_id = SpanId::try_from(&record.span_id).ok();

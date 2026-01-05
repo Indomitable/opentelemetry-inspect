@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use chrono::{DateTime, TimeZone, Utc};
 use serde::Serialize;
-use crate::domain::{extract_tags};
+use crate::domain::{bytes_to_hex, extract_tags};
 use crate::domain::resource::ResourceInfo;
 use crate::opentelemetry;
 use crate::opentelemetry::proto::common::v1::InstrumentationScope;
@@ -35,15 +35,6 @@ impl TryFrom<&Vec<u8>> for SpanId {
         }
         Ok(SpanId(bytes_to_hex(value)))
     }
-}
-
-fn bytes_to_hex(bytes: &[u8]) -> String {
-    let hex_string = bytes.iter()
-        .fold(String::with_capacity(bytes.len() * 2), |mut acc, b| {
-            acc.push_str(&format!("{:02x}", b));
-            acc
-        });
-    hex_string
 }
 
 fn is_valid(bytes: &[u8], size: usize) -> bool {
