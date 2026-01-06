@@ -5,19 +5,20 @@ import {Log} from "../domain/logs.ts";
 import ResourceSelector from "../components/resource-selector.vue";
 import {getSeverityType} from "../domain/logs-exensions.ts";
 import LogsDetailsView from "../components/logs-details-view.vue";
+import {Resource} from "../domain/resources.ts";
 
 const logsStore = useLogsStore();
 
 const selectedLog = ref<Log | null>(null);
-const selectedInstanceId = ref<string>('-');
+const selectedResource = ref<Resource|null>(null);
 
-const filterLogs = (instanceId: string) => {
-  selectedInstanceId.value = instanceId;
+const filterLogs = (resource: Resource|null) => {
+  selectedResource.value = resource;
 };
 
 const filteredLogs = computed(() => {
-  if (selectedInstanceId.value !== '-') {
-    return logsStore.logsByInstance(selectedInstanceId.value);
+  if (selectedResource.value) {
+    return logsStore.logsByResource(selectedResource.value);
   }
 
   return logsStore.logs;

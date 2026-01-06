@@ -1,6 +1,7 @@
 import {acceptHMRUpdate, defineStore} from "pinia";
 import {Log, LogDto, mapLogDtoToLog} from "../domain/logs.ts";
 import {useResourceStore} from "./resource-store.ts";
+import type {Resource} from "../domain/resources.ts";
 
 export const useLogsStore = defineStore('logs', {
     state: () => ({
@@ -8,9 +9,9 @@ export const useLogsStore = defineStore('logs', {
     }),
     getters: {
         totalCount: (state) => state.logs.length,
-        logsByInstance: (state) =>
-            (instanceId: string) =>
-                state.logs.filter(log => log.resource.service_instance_id === instanceId),
+        logsByResource: (state) =>
+            (resource: Resource) =>
+                state.logs.filter(log => log.resource.key === resource.key),
     },
     actions: {
         addLog(dto: LogDto) {

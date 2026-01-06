@@ -1,4 +1,4 @@
-import {Resource} from "./resources.ts";
+import {mapResource, Resource, ResourceDto} from "./resources.ts";
 
 export interface SpanDto {
     start_time: string;
@@ -10,7 +10,7 @@ export interface SpanDto {
     trace_id: string;
     span_id: string;
     parent_span_id?: string;
-    resource: Resource;
+    resource: ResourceDto;
     kind: string;
     status: {
         message: string;
@@ -35,6 +35,7 @@ export interface Span extends SpanDto {
     end_ns: bigint;
     duration: bigint;
     children: Span[];
+    resource: Resource;
 }
 
 export function mapSpanDtoToSpan(dto: SpanDto): Span {
@@ -45,7 +46,8 @@ export function mapSpanDtoToSpan(dto: SpanDto): Span {
         start_ns,
         end_ns,
         duration: end_ns - start_ns,
-        children: []
+        children: [],
+        resource: mapResource(dto.resource),
     };
 }
 

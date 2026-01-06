@@ -6,18 +6,19 @@ import {durationToString, Span} from "../domain/traces.ts";
 import {computed, ref} from "vue";
 import type {TreeNode} from "primevue/treenode";
 import SpanDetailsView from "../components/span-details-view.vue";
+import {Resource} from "../domain/resources.ts";
 
 const tracesStore = useTracesStore();
-const selectedInstanceId = ref<string>('-');
+const selectedResource = ref<Resource|null>(null);
 const selectedKey = ref<TreeTableSelectionKeys | undefined>(undefined);
 
-const filterSpans = (instanceId: string) => {
-  selectedInstanceId.value = instanceId;
+const filterSpans = (resource: Resource|null) => {
+  selectedResource.value = resource;
 };
 
 const filteredRoots = computed(() => {
-  if (selectedInstanceId.value !== '-') {
-    return tracesStore.spans.filter(s => s.resource.service_instance_id === selectedInstanceId.value);
+  if (selectedResource.value) {
+    return tracesStore.spansForResource(selectedResource.value);
   }
   return tracesStore.spans;
 });

@@ -1,62 +1,73 @@
 import {acceptHMRUpdate, defineStore} from "pinia";
 import {mapSpanDtoToSpan, Span, SpanDto} from "../domain/traces.ts";
 import {useResourceStore} from "./resource-store.ts";
+import {computed, ref} from "vue";
+import {Resource} from "../domain/resources.ts";
 
-export const useTracesStore = defineStore('traces', {
-    state: () => ({
-        // keep roots only here; full lookup is in the index
-        spans: [] as Span[],
-        index: {} as Record<string, Span>,
-        _orphans: {} as Record<string, Span[]>
-    }),
-    getters: {
-        totalCount: (state) => Object.keys(state.index).length,
-        // flattened list of spans for components that expect a flat array
-        flatSpans: (state) => Object.values(state.index)
-    },
-    actions: {
-        addSpan(dto: SpanDto) {
-            const key = `${dto.trace_id}-${dto.span_id}`;
-            if (this.index[key]) {
-                // span already exists
-                return;
-            }
+export const useTracesStore = defineStore('traces', () => {
+    const spans = ref<Span[]>([]);
+    const index = ref<Record<string, Span>>({});
+    const _orphans = ref<Record<string, Span[]>>({});
 
-            const span = mapSpanDtoToSpan(dto);
-            const resourceStore = useResourceStore();
-            resourceStore.addResource(span.resource);
+    const resourceStore = useResourceStore();
+    const totalCount = computed(() => Object.keys(index.value).length);
+    const flatSpans = computed(() => Object.values(index.value));
+    //const spansForResource = computed(() => (resource: string) => spans.value.filter(s => s.resource.key === resource));
 
-            this.index[key] = span;
-            const orphans = this._orphans[key];
-            if (orphans && orphans.length > 0) {
-                // if there are orphan spans and this span is their parent, attach them
-                span.children.push(...orphans);
-                // remove orphan from roots
-                this.spans = this.spans.filter(s => !(s.trace_id === span.trace_id && orphans.some(o => s.span_id === o.span_id)));
-                // clean up the orphans map
-                delete this._orphans[key];
-            }
+    function addSpan(dto: SpanDto) {
+        const key = `${dto.trace_id}-${dto.span_id}`;
+        if (index.value[key]) {
+            // span already exists
+            return;
+        }
 
-            if (!span.parent_span_id) {
-                // no parent: place as root (top-level)
-                this.spans.push(span);
+        const span = mapSpanDtoToSpan(dto);
+
+        resourceStore.addResource(span.resource);
+
+        index.value[key] = span;
+        const orphans = _orphans.value[key];
+        if (orphans && orphans.length > 0) {
+            // if there are orphan spans and this span is their parent, attach them
+            span.children.push(...orphans);
+            // remove orphan from roots
+            spans.value = spans.value.filter(s => !(s.trace_id === span.trace_id && orphans.some(o => s.span_id === o.span_id)));
+            // clean up the orphans map
+            delete _orphans.value[key];
+        }
+
+        if (!span.parent_span_id) {
+            // no parent: place as root (top-level)
+            spans.value.push(span);
+        } else {
+            const parentKey = `${span.trace_id}-${span.parent_span_id}`;
+            const parent = index.value[parentKey];
+            if (parent) {
+                // parent exists: add as child
+                parent.children.push(span);
             } else {
-                const parentKey = `${span.trace_id}-${span.parent_span_id}`;
-                const parent = this.index[parentKey];
-                if (parent) {
-                    // parent exists: add as child
-                    parent.children.push(span);
-                } else {
-                    // parent missing: keep as root for display, and register as orphan
-                    this.spans.push(span);
-                    if (!this._orphans[parentKey]) {
-                        this._orphans[parentKey] = [];
-                    }
-                    this._orphans[parentKey].push(span);
+                // parent missing: keep as root for display, and register as orphan
+                spans.value.push(span);
+                if (!_orphans.value[parentKey]) {
+                    _orphans.value[parentKey] = [];
                 }
+                _orphans.value[parentKey].push(span);
             }
         }
     }
+
+    function spansForResource(resource: Resource) {
+        return spans.value.filter(s => s.resource.key === resource.key);
+    }
+
+    return {
+        spans,
+        index,
+        totalCount,
+        flatSpans,
+        addSpan,
+        spansForResource,
+    };
 });
 
 if (import.meta.hot) {
