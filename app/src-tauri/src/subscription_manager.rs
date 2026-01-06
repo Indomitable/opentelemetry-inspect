@@ -4,6 +4,7 @@ use serde::Serialize;
 use tokio::sync::broadcast;
 use tokio::sync::broadcast::Receiver;
 use crate::domain::logs::LogDto;
+use crate::domain::metrics::MetricDto;
 use crate::domain::traces::SpanDto;
 
 pub type ClientId = String;
@@ -14,6 +15,7 @@ pub type Topic = String;
 pub(crate) enum TopicMessage {
     Logs { topic: String, payload: Box<LogDto> },
     Spans { topic: String, payload: Box<SpanDto> },
+    Metrics { topic: String, payload: Box<MetricDto> },
     Any { topic: String, payload: String }
 }
 
@@ -26,6 +28,7 @@ impl TopicMessage {
         match self {
             TopicMessage::Logs { topic, .. } => topic.as_str(),
             TopicMessage::Spans { topic, .. } => topic.as_str(),
+            TopicMessage::Metrics { topic, .. } => topic.as_str(),
             TopicMessage::Any { topic, .. } => topic.as_str(),
         }
     }
@@ -40,6 +43,12 @@ impl From<LogDto> for TopicMessage {
 impl From<SpanDto> for TopicMessage {
     fn from(value: SpanDto) -> Self {
         TopicMessage::Spans { topic: "traces".to_string(), payload: Box::new(value) }
+    }
+}
+
+impl From<MetricDto> for TopicMessage {
+    fn from(value: MetricDto) -> Self {
+        TopicMessage::Metrics { topic: "metrics".to_string(), payload: Box::new(value) }
     }
 }
 
@@ -106,6 +115,15 @@ impl SubscriptionManager {
     }
 
     pub fn publish_span(&self, payload: SpanDto) -> Result<usize, broadcast::error::SendError<TopicMessage>> {
+        let event = TopicMessage::from(payload);
+        if let Some(tx) = self.channels.get(event.topic()) {
+            tx.send(event)
+        } else {
+            Ok(0)
+        }
+    }
+
+    pub fn publish_metric(&self, payload: MetricDto) -> Result<usize, broadcast::error::SendError<TopicMessage>> {
         let event = TopicMessage::from(payload);
         if let Some(tx) = self.channels.get(event.topic()) {
             tx.send(event)

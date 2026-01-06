@@ -1,45 +1,13 @@
 use std::collections::HashMap;
 use chrono::{DateTime, TimeZone, Utc};
 use serde::Serialize;
-use crate::domain::{bytes_to_hex, extract_tags};
+use crate::domain::{extract_tags};
+use crate::domain::common::{SpanId, Nanoseconds, TraceId};
 use crate::domain::resource::ResourceInfo;
 use crate::opentelemetry;
 use crate::opentelemetry::proto::common::v1::InstrumentationScope;
 use crate::opentelemetry::proto::resource::v1::Resource;
 use crate::opentelemetry::proto::trace::v1::Span;
-
-#[derive(Debug, Clone, PartialEq, Serialize)]
-#[serde(transparent)]
-pub struct TraceId(String);
-#[derive(Debug, Clone, PartialEq, Serialize)]
-#[serde(transparent)]
-pub struct SpanId(String);
-
-impl TryFrom<&Vec<u8>> for TraceId {
-    type Error = &'static str;
-
-    fn try_from(value: &Vec<u8>) -> Result<Self, Self::Error> {
-        if !is_valid(value, 16) {
-            return Err("Invalid trace id. Must be 16 bytes long and not all zeros.");
-        }
-        Ok(TraceId(bytes_to_hex(value)))
-    }
-}
-
-impl TryFrom<&Vec<u8>> for SpanId {
-    type Error = &'static str;
-
-    fn try_from(value: &Vec<u8>) -> Result<Self, Self::Error> {
-        if !is_valid(value, 8) {
-            return Err("Invalid span id. Must be 8 bytes long and not all zeros.");
-        }
-        Ok(SpanId(bytes_to_hex(value)))
-    }
-}
-
-fn is_valid(bytes: &[u8], size: usize) -> bool {
-    bytes.len() == size && !bytes.iter().all(|b| b == &0)
-}
 
 #[derive(Debug, Clone, Serialize)]
 pub enum SpanKind {
@@ -92,8 +60,8 @@ impl Default for SpanStatus {
 pub struct SpanDto {
     pub start_time: DateTime<Utc>,
     pub end_time: DateTime<Utc>,
-    pub start_time_unix_nano: String,
-    pub end_time_unix_nano: String,
+    pub start_time_unix_nano: Nanoseconds,
+    pub end_time_unix_nano: Nanoseconds,
     pub scope: String,
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -162,8 +130,8 @@ impl SpanDto {
         Self {
             start_time: start,
             end_time: end,
-            start_time_unix_nano: span.start_time_unix_nano.to_string(),
-            end_time_unix_nano: span.end_time_unix_nano.to_string(),
+            start_time_unix_nano: span.start_time_unix_nano.into(),
+            end_time_unix_nano: span.end_time_unix_nano.into(),
             scope: scope_name,
             name: span.name,
             trace_id,
@@ -176,31 +144,5 @@ impl SpanDto {
             links,
             tags
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_invalid_trace_id_all_zeros() {
-        let bytes = vec![0u8; 16];
-        let trace_id = TraceId::try_from(&bytes).ok();
-        assert_eq!(trace_id, None);
-    }
-
-    #[test]
-    fn test_invalid_trace_id_less_than_16_bytes() {
-        let bytes = vec![0x01, 0x02];
-        let trace_id = TraceId::try_from(&bytes).ok();
-        assert_eq!(trace_id, None);
-    }
-
-    #[test]
-    fn test_valid_trace_id_some_zeros() {
-        let bytes = vec![0u8, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-        let trace_id = TraceId::try_from(&bytes).ok();
-        assert_eq!(trace_id, Some(TraceId("000102030405060708090a0b0c0d0e0f".to_string())));
     }
 }

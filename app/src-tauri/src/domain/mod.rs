@@ -4,6 +4,8 @@ use crate::opentelemetry::proto::common::v1::{any_value, AnyValue, ArrayValue, K
 pub(crate) mod logs;
 pub(crate) mod traces;
 pub(crate) mod resource;
+pub(crate) mod metrics;
+pub(crate) mod common;
 
 pub fn bytes_to_hex(bytes: &[u8]) -> String {
     let hex_string = bytes.iter()

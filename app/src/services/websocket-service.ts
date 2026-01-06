@@ -77,6 +77,7 @@ export class WebSocketService {
         this.lastPongTimestamp = Date.now();
         this.subscribeToTopic('logs');
         this.subscribeToTopic('traces');
+        this.subscribeToTopic('metrics');
         this.startHeartbeat();
     };
 

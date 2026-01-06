@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use chrono::{DateTime, Utc, TimeZone};
 use crate::domain::{any_value_to_string_optional, extract_tags};
 use crate::domain::resource::ResourceInfo;
-use super::traces::{SpanId, TraceId};
+use super::common::{SpanId, TraceId};
 use crate::opentelemetry::proto::logs::v1::LogRecord;
 use crate::opentelemetry::proto::resource::v1::Resource;
 use crate::opentelemetry::proto::common::v1::InstrumentationScope;

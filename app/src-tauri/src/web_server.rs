@@ -8,6 +8,7 @@ use tower_http::services::ServeDir;
 use prost::{DecodeError, Message as ProstMessage};
 use crate::{AppState};
 use crate::opentelemetry::proto::collector::logs::v1::{ExportLogsServiceRequest, ExportLogsServiceResponse};
+use crate::opentelemetry::proto::collector::metrics::v1::{ExportMetricsServiceRequest, ExportMetricsServiceResponse};
 use crate::opentelemetry::proto::collector::trace::v1::{ExportTraceServiceRequest, ExportTraceServiceResponse};
 use crate::server::shutdown_signal;
 use crate::websocket_hub::websocket_handler;
@@ -18,7 +19,8 @@ const JSON_CONTENT_TYPE: &str = "application/json";
 fn get_otlp_routes() -> Router<AppState> {
     let otlp_routes = Router::new()
         .route("/logs", post(handle_logs))
-        .route("/traces", post(handle_traces));
+        .route("/traces", post(handle_traces))
+        .route("/metrics", post(handle_metrics));    
     otlp_routes
 }
 
@@ -81,6 +83,27 @@ async fn handle_traces(State(state): State<AppState>, request: axum::extract::Re
             let mut bytes = Vec::new();
             let export_traces_response = ExportTraceServiceResponse::default();
             ExportTraceServiceResponse::encode(&export_traces_response, &mut bytes).unwrap();
+            Response::builder()
+                .status(StatusCode::OK)
+                .header("content-type", PROTOBUF_CONTENT_TYPE)
+                .body(bytes.into())
+                .unwrap()
+        },
+        Err(e) => e
+    }
+}
+
+async fn handle_metrics(State(state): State<AppState>, request: axum::extract::Request) -> impl IntoResponse {
+    let r = extract_request(request,
+                            ExportMetricsServiceRequest::decode,
+                            |body| serde_json::from_slice(&body)).await;
+    match r {
+        Ok(request) => {
+            state.request_processor.process_metrics(request).await;
+
+            let mut bytes = Vec::new();
+            let export_metrics_response = ExportMetricsServiceResponse::default();
+            ExportMetricsServiceResponse::encode(&export_metrics_response, &mut bytes).unwrap();
             Response::builder()
                 .status(StatusCode::OK)
                 .header("content-type", PROTOBUF_CONTENT_TYPE)
