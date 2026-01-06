@@ -217,4 +217,124 @@ describe('metrics-view-model', () => {
         expect(chartData.datasets.find(d => d.label.includes('service-1'))?.data).toEqual([10]);
         expect(chartData.datasets.find(d => d.label.includes('service-2'))?.data).toEqual([20]);
     });
+
+    it('should accumulate values for non-monotonic Sum with Delta temporality', () => {
+        const metric: Metric = {
+            name: 'up_down_counter',
+            unit: '1',
+            description: 'desc',
+            scope: 'scope',
+            resource: {
+                service_name: 'service-a',
+                service_instance_id: 'instance-1',
+                service_version: '',
+                service_namespace: '',
+                attributes: {},
+                key: 'r1'
+            },
+            key: 'key1',
+            type: MetricType.Sum,
+        };
+
+        const aggregatedMetric: AggregatedMetric = {
+            ...metric,
+            data: {
+                t: MetricType.Sum,
+                aggregation_temporality: AggregationTemporality.Delta,
+                is_monotonic: false,
+                data_points: [
+                    {
+                        t: 'value',
+                        start_time_unix_nano: '1000000000',
+                        time_unix_nano: '1000000000',
+                        start_ns: 1000000000n,
+                        time_ns: 1000000000n,
+                        value: 10,
+                        attributes: {},
+                        exemplars: []
+                    },
+                    {
+                        t: 'value',
+                        start_time_unix_nano: '2000000000',
+                        time_unix_nano: '2000000000',
+                        start_ns: 2000000000n,
+                        time_ns: 2000000000n,
+                        value: 5,
+                        attributes: {},
+                        exemplars: []
+                    },
+                    {
+                        t: 'value',
+                        start_time_unix_nano: '3000000000',
+                        time_unix_nano: '3000000000',
+                        start_ns: 3000000000n,
+                        time_ns: 3000000000n,
+                        value: -3,
+                        attributes: {},
+                        exemplars: []
+                    }
+                ]
+            }
+        };
+
+        const chartData = getChartData(metric, [aggregatedMetric], null);
+
+        // Currently it does NOT accumulate, so it will return [10, 5, -3]
+        // But it should return [10, 15, 12]
+        expect(chartData.datasets[0].data).toEqual([10, 15, 12]);
+    });
+
+    it('should NOT accumulate values for monotonic Sum with Delta temporality', () => {
+        const metric: Metric = {
+            name: 'monotonic_counter',
+            unit: '1',
+            description: 'desc',
+            scope: 'scope',
+            resource: {
+                service_name: 'service-a',
+                service_instance_id: 'instance-1',
+                service_version: '',
+                service_namespace: '',
+                attributes: {},
+                key: 'r1'
+            },
+            key: 'key1',
+            type: MetricType.Sum,
+        };
+
+        const aggregatedMetric: AggregatedMetric = {
+            ...metric,
+            data: {
+                t: MetricType.Sum,
+                aggregation_temporality: AggregationTemporality.Delta,
+                is_monotonic: true,
+                data_points: [
+                    {
+                        t: 'value',
+                        start_time_unix_nano: '1000000000',
+                        time_unix_nano: '1000000000',
+                        start_ns: 1000000000n,
+                        time_ns: 1000000000n,
+                        value: 10,
+                        attributes: {},
+                        exemplars: []
+                    },
+                    {
+                        t: 'value',
+                        start_time_unix_nano: '2000000000',
+                        time_unix_nano: '2000000000',
+                        start_ns: 2000000000n,
+                        time_ns: 2000000000n,
+                        value: 5,
+                        attributes: {},
+                        exemplars: []
+                    }
+                ]
+            }
+        };
+
+        const chartData = getChartData(metric, [aggregatedMetric], null);
+
+        expect(chartData.datasets[0].data).toEqual([10, 5]);
+    });
 });

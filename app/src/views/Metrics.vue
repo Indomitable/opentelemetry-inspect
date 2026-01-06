@@ -104,7 +104,14 @@ const filterMetrics = (resource: Resource|null) => {
 
       <div class="metrics-content">
         <div class="metrics-list">
-          <DataTable :value="filteredMetrics" selection-mode="single" @row-click="(e) => selectMetric(e.data)" :row-class="(data) => ({ 'selected-row': selectedMetric === data })" size="small" scrollable scroll-height="flex">
+          <DataTable :value="filteredMetrics"
+                     selection-mode="single"
+                     @row-click="(e) => selectMetric(e.data)"
+                     :row-class="(data) => ({ 'selected-row': selectedMetric === data })"
+                     size="small"
+                     scrollable
+                     scroll-height="flex"
+                     class="p-datatable-sm list-table">
             <template #empty><div class="list-table__empty">No metrics recorded.</div></template>
             <Column field="name" header="Name"></Column>
             <Column field="unit" header="Unit" style="width: 100px"></Column>
@@ -144,33 +151,6 @@ const filterMetrics = (resource: Resource|null) => {
 </template>
 
 <style scoped>
-.page {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.page__container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.page__header-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  flex-shrink: 0;
-}
-
-.page__filters {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
 .metrics-content {
   display: flex;
   flex: 1;
@@ -240,12 +220,6 @@ const filterMetrics = (resource: Resource|null) => {
 
 :deep(.selected-row) {
     background-color: #eff6ff !important;
-}
-
-.list-table__empty {
-    padding: 20px;
-    text-align: center;
-    color: #6b7280;
 }
 
 @media (prefers-color-scheme: dark) {

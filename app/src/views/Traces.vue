@@ -76,7 +76,7 @@ const closeDetails = () => {
           paginator
           :rows="25"
           :rows-per-page-options="[10, 25, 50, 100]"
-          class="p-datatable-sm list-table"
+          class="p-treetable-sm list-table"
       >
         <template #empty><div class="list-table__empty">No spans recorded.</div></template>
         <Column field="name" header="Name" expander :style="{ width: '150px' }" />

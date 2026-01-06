@@ -1,4 +1,4 @@
-import { AggregatedMetric, Metric } from "../domain/metrics";
+import { AggregatedMetric, Metric, MetricType, AggregationTemporality } from "../domain/metrics";
 import {Resource} from "../domain/resources.ts";
 
 export interface ChartDataset {
@@ -59,7 +59,15 @@ export function getChartData(
     const datasets = metricsToDisplay.map((m, index) => {
         const dataMap = new Map<number, number>();
         const points = m.data?.data_points || [];
+
+        const isDeltaSum = m.data.t === MetricType.Sum &&
+            m.data.aggregation_temporality === AggregationTemporality.Delta;
+
+        const isNonMonotonic = m.data.t === MetricType.Sum && !m.data.is_monotonic;
+
+        const shouldAccumulate = isDeltaSum && isNonMonotonic;
         
+        let accumulator = 0;
         points.forEach(dp => {
             const ts = Number(dp.time_ns / 1000000n);
             let value: number;
@@ -80,7 +88,13 @@ export function getChartData(
                     value = 0;
                 }
             }
-            dataMap.set(ts, value);
+
+            if (shouldAccumulate) {
+                accumulator += value;
+                dataMap.set(ts, accumulator);
+            } else {
+                dataMap.set(ts, value);
+            }
         });
 
         const data = sortedTimestampKeys.map(ts => dataMap.get(ts) ?? null);
