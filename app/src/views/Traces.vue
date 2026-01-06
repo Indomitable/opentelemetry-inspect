@@ -73,6 +73,9 @@ const closeDetails = () => {
           scroll-height="flex"
           column-resize-mode="fit"
           size="small"
+          paginator
+          :rows="25"
+          :rows-per-page-options="[10, 25, 50, 100]"
           class="p-datatable-sm list-table"
       >
         <template #empty><div class="list-table__empty">No spans recorded.</div></template>

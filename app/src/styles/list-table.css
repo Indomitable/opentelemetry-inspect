@@ -4,6 +4,10 @@
     overflow: hidden;
 }
 
+.list-table.p-treetable-flex-scrollable, .list-table.p-datatable-flex-scrollable {
+    height: auto !important;
+}
+
 @media (prefers-color-scheme: dark) {
     .list-table {
         border-color: #444;
