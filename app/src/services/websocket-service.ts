@@ -1,9 +1,11 @@
 import {LogDto} from "../domain/logs.ts";
 import {SpanDto} from "../domain/traces.ts";
+import {MetricDto} from "../domain/metrics.ts";
 
 export interface MessageHandlers {
     onLogReceived: (log: LogDto) => void;
     onSpanReceived: (span: SpanDto) => void;
+    onMetricReceived: (metric: MetricDto) => void;
 }
 
 export class WebSocketService {
@@ -68,6 +70,12 @@ export class WebSocketService {
         if (WebSocketService.isTracesEvent(data)) {
             if (this.handlers) {
                 this.handlers.onSpanReceived(data.payload);
+            }
+        }
+
+        if (WebSocketService.isMetricsEvent(data)) {
+            if (this.handlers) {
+                this.handlers.onMetricReceived(data.payload);
             }
         }
     };
@@ -164,6 +172,10 @@ export class WebSocketService {
 
     private static isTracesEvent(data: any): data is Message<SpanDto> {
         return 'topic' in data && data.topic === 'traces' && 'payload' in data;
+    }
+
+    private static isMetricsEvent(data: any): data is Message<MetricDto> {
+        return 'topic' in data && data.topic === 'metrics' && 'payload' in data;
     }
 }
 

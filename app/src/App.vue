@@ -3,9 +3,11 @@ import { onMounted, onUnmounted } from 'vue';
 import {useLogsStore} from "./state/logs-store.ts";
 import {WebSocketService} from "./services/websocket-service.ts";
 import {useTracesStore} from "./state/traces-store.ts";
+import {useMetricsStore} from "./state/metrics-store.ts";
 
 const logsStore = useLogsStore();
 const tracesStore = useTracesStore();
+const metricsStore = useMetricsStore();
 let ws: WebSocketService | null = null;
 
 onMounted(() => {
@@ -16,6 +18,9 @@ onMounted(() => {
     },
     onSpanReceived: (span) => {
       tracesStore.addSpan(span);
+    },
+    onMetricReceived: (metric) => {
+      metricsStore.addMetric(metric);
     }
   });
   ws.connect();
