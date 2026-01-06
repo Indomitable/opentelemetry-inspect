@@ -50,7 +50,7 @@ describe('metrics-view-model', () => {
             }
         };
 
-        const chartData = getChartData(metric, [aggregatedMetric], null);
+        const chartData = getChartData(metric, [aggregatedMetric], null, 1000, 2000);
 
         expect(chartData.labels.length).toBe(2);
         expect(chartData.datasets.length).toBe(1);
@@ -99,7 +99,7 @@ describe('metrics-view-model', () => {
             }
         };
 
-        const chartData = getChartData(metric, [aggregatedMetric], null);
+        const chartData = getChartData(metric, [aggregatedMetric], null, 1000, 2000);
 
         expect(chartData.datasets[0].data).toEqual([50]);
     });
@@ -145,7 +145,7 @@ describe('metrics-view-model', () => {
             }
         };
 
-        const chartData = getChartData(metric, [aggregatedMetric], null);
+        const chartData = getChartData(metric, [aggregatedMetric], null, 1000, 2000);
 
         expect(chartData.datasets[0].data).toEqual([0]);
     });
@@ -211,7 +211,7 @@ describe('metrics-view-model', () => {
             }
         };
 
-        const chartData = getChartData(metric1, [metric1, metric2], null);
+        const chartData = getChartData(metric1, [metric1, metric2], null, 1000, 2000);
 
         expect(chartData.datasets.length).toBe(2);
         expect(chartData.datasets.find(d => d.label.includes('service-1'))?.data).toEqual([10]);
@@ -277,7 +277,7 @@ describe('metrics-view-model', () => {
             }
         };
 
-        const chartData = getChartData(metric, [aggregatedMetric], null);
+        const chartData = getChartData(metric, [aggregatedMetric], null, 1000, 3000);
 
         // Currently it does NOT accumulate, so it will return [10, 5, -3]
         // But it should return [10, 15, 12]
@@ -333,7 +333,7 @@ describe('metrics-view-model', () => {
             }
         };
 
-        const chartData = getChartData(metric, [aggregatedMetric], null);
+        const chartData = getChartData(metric, [aggregatedMetric], null, 1000, 3000);
 
         expect(chartData.datasets[0].data).toEqual([10, 5]);
     });
@@ -375,11 +375,110 @@ describe('metrics-view-model', () => {
             }
         };
 
-        const tableData = getTableData(metric, [aggregatedMetric], null);
+        const tableData = getTableData(metric, [aggregatedMetric], null, 1000, 3000);
 
         expect(tableData.length).toBe(1);
         expect(tableData[0].value).toBe(42);
         expect(tableData[0].attributes).toEqual({ host: 'localhost' });
         expect(tableData[0].resource).toContain('service-a');
+    });
+
+    it('should filter data points by time range', () => {
+        const metric: Metric = {
+            name: 'test_metric',
+            unit: 'ms',
+            description: 'desc',
+            scope: 'scope',
+            resource: {
+                service_name: 'service-a',
+                service_instance_id: 'instance-1',
+                service_version: '',
+                service_namespace: '',
+                attributes: {},
+                key: 'r1'
+            },
+            key: 'key1',
+            type: MetricType.Gauge,
+        };
+
+        const aggregatedMetric: AggregatedMetric = {
+            ...metric,
+            data: {
+                t: MetricType.Gauge,
+                data_points: [
+                    {
+                        t: 'value',
+                        start_time_unix_nano: '1000000000',
+                        time_unix_nano: '1000000000', // 1000 ms
+                        start_ns: 1000000000n,
+                        time_ns: 1000000000n,
+                        value: 10,
+                        attributes: {},
+                        exemplars: []
+                    },
+                    {
+                        t: 'value',
+                        start_time_unix_nano: '2000000000',
+                        time_unix_nano: '2000000000', // 2000 ms
+                        start_ns: 2000000000n,
+                        time_ns: 2000000000n,
+                        value: 20,
+                        attributes: {},
+                        exemplars: []
+                    },
+                    {
+                        t: 'value',
+                        start_time_unix_nano: '3000000000',
+                        time_unix_nano: '3000000000', // 3000 ms
+                        start_ns: 3000000000n,
+                        time_ns: 3000000000n,
+                        value: 30,
+                        attributes: {},
+                        exemplars: []
+                    }
+                ]
+            }
+        };
+
+        // Filter for [1500, 2500]
+        const chartData = getChartData(metric, [aggregatedMetric], null, 1500, 2500);
+        expect(chartData.labels.length).toBe(1);
+        expect(chartData.datasets[0].data).toEqual([20]);
+
+        const tableData = getTableData(metric, [aggregatedMetric], null, 1500, 2500);
+        expect(tableData.length).toBe(1);
+        expect(tableData[0].value).toBe(20);
+    });
+
+    it('should correctly accumulate values even when start time is in the middle', () => {
+        const metric: Metric = {
+            name: 'up_down',
+            unit: '1',
+            description: 'desc',
+            scope: 'scope',
+            resource: { service_name: 's', service_instance_id: 'i', service_version: '', service_namespace: '', attributes: {}, key: 'r' },
+            key: 'k',
+            type: MetricType.Sum,
+        };
+
+        const aggregatedMetric: AggregatedMetric = {
+            ...metric,
+            data: {
+                t: MetricType.Sum,
+                aggregation_temporality: AggregationTemporality.Delta,
+                is_monotonic: false,
+                data_points: [
+                    { t: 'value', start_time_unix_nano: '1000000000', time_unix_nano: '1000000000', start_ns: 1000000000n, time_ns: 1000000000n, value: 10, attributes: {}, exemplars: [] },
+                    { t: 'value', start_time_unix_nano: '2000000000', time_unix_nano: '2000000000', start_ns: 2000000000n, time_ns: 2000000000n, value: 5, attributes: {}, exemplars: [] },
+                    { t: 'value', start_time_unix_nano: '3000000000', time_unix_nano: '3000000000', start_ns: 3000000000n, time_ns: 3000000000n, value: 2, attributes: {}, exemplars: [] }
+                ]
+            }
+        };
+
+        // If we start from 2000ms, the accumulator should already be 15 (10 + 5)
+        const tableData = getTableData(metric, [aggregatedMetric], null, 1500, 3500);
+        expect(tableData.length).toBe(2);
+        expect(tableData.find(d => d.time_ns === 2000000000n)?.value).toBe(15);
+        expect(tableData.find(d => d.time_ns === 3000000000n)?.value).toBe(17);
     });
 });

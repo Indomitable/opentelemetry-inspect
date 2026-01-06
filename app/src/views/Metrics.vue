@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, ref} from "vue";
+import {computed, ref, watch} from "vue";
 import {useMetricsStore} from "../state/metrics-store.ts";
 import ResourceSelector from "../components/resource-selector.vue";
 import {Metric} from "../domain/metrics.ts";
@@ -10,6 +10,8 @@ const metricsStore = useMetricsStore();
 const selectedResource = ref<Resource|null>(null);
 const selectedMetric = ref<Metric | null>(null);
 const viewMode = ref<'chart' | 'table'>('chart');
+const timeRange = ref<[number, number]>([0, 0]);
+const isTimeRangeInitialized = ref(false);
 
 const filteredMetrics = computed(() => {
   if (selectedResource.value) {
@@ -31,23 +33,110 @@ const filteredMetrics = computed(() => {
   return uniqueMetrics;
 });
 
+const relevantMetricsForRange = computed(() => {
+    if (!selectedMetric.value) return [];
+    
+    return metricsStore.metrics.filter(m =>
+        m.name === selectedMetric.value!.name &&
+        m.unit === selectedMetric.value!.unit &&
+        m.type === selectedMetric.value!.type
+    );
+});
+
+const totalTimeRange = computed(() => {
+    let min = Infinity;
+    let max = -Infinity;
+
+    relevantMetricsForRange.value.forEach(m => {
+        m.data.data_points.forEach(dp => {
+            const ts = Number(dp.time_ns / 1_000_000n);
+            if (ts < min) min = ts;
+            if (ts > max) max = ts;
+        });
+    });
+
+    if (min === Infinity) return { min: 0, max: 0 };
+    return { min, max };
+});
+
+const formatTime = (ts: number) => {
+    if (!ts) return '';
+    return new Date(ts).toLocaleTimeString();
+};
+
+const formatDuration = (ms: number) => {
+  if (ms < 0) ms = 0;
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+
+  if (hours > 0) {
+    return `${hours}h ${minutes % 60}min`;
+  }
+  if (minutes > 0) {
+    return `${minutes}min ${seconds % 60}sec`;
+  }
+  return `${seconds}sec`;
+};
+
+const selectedDurationLabel = computed(() => {
+  const duration = timeRange.value[1] - timeRange.value[0];
+  return formatDuration(duration);
+});
+
 const selectMetric = (metric: Metric) => {
   selectedMetric.value = metric;
+  isTimeRangeInitialized.value = false;
 };
+
+// Update time range when total range changes (e.g. new data comes in)
+// but only if it hasn't been manually adjusted or if it's the first time
+watch(totalTimeRange, (newRange, oldRange) => {
+    if (!isTimeRangeInitialized.value && newRange.min !== newRange.max) {
+        timeRange.value = [newRange.min, newRange.max];
+        isTimeRangeInitialized.value = true;
+    } else if (isTimeRangeInitialized.value) {
+        const wasAtEnd = oldRange && timeRange.value[1] >= oldRange.max - 1000; // add some precision interval
+        
+        // Ensure timeRange stays within totalTimeRange
+        if (timeRange.value[0] < newRange.min) timeRange.value[0] = newRange.min;
+        
+        if (wasAtEnd) {
+            const duration = timeRange.value[1] - timeRange.value[0];
+            const newEnd = newRange.max;
+            const newStart = Math.max(newRange.min, newEnd - duration);
+            timeRange.value = [newStart, newEnd];
+        } else {
+            if (timeRange.value[1] > newRange.max) timeRange.value[1] = newRange.max;
+        }
+    }
+}, { immediate: true });
 
 const chartData = computed(() => {
   if (!selectedMetric.value) {
     return;
   }
 
-  return getChartData(selectedMetric.value, metricsStore.metrics, selectedResource.value);
+  return getChartData(
+      selectedMetric.value,
+      metricsStore.metrics,
+      selectedResource.value,
+      timeRange.value[0],
+      timeRange.value[1]
+  );
 });
 
 const tableData = computed(() => {
     if (!selectedMetric.value) {
         return [];
     }
-    return getTableData(selectedMetric.value, metricsStore.metrics, selectedResource.value);
+    return getTableData(
+        selectedMetric.value,
+        metricsStore.metrics,
+        selectedResource.value,
+        timeRange.value[0],
+        timeRange.value[1]
+    );
 });
 
 const isDarkMode = ref(window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -153,6 +242,19 @@ const filterMetrics = (resource: Resource|null) => {
             </div>
           </div>
 
+          <div class="metric-timeline" v-if="totalTimeRange.min !== totalTimeRange.max">
+            <div class="timeline-labels">
+              <span>{{ formatTime(timeRange[0]) }}</span>
+              <span class="timeline-duration">{{ selectedDurationLabel }}</span>
+              <span>{{ formatTime(timeRange[1]) }}</span>
+            </div>
+            <Slider v-model="timeRange" range :min="totalTimeRange.min" :max="totalTimeRange.max" class="w-full" />
+            <div class="timeline-full-range">
+              <span>{{ formatTime(totalTimeRange.min) }}</span>
+              <span>{{ formatTime(totalTimeRange.max) }}</span>
+            </div>
+          </div>
+
           <div v-if="viewMode === 'chart'" class="chart-container">
             <div class="chart-wrapper">
                 <Chart type="line" :data="chartData" :options="chartOptions" class="h-full" />
@@ -236,6 +338,37 @@ const filterMetrics = (resource: Resource|null) => {
 
 .metric-details__info h3 {
     margin: 0 0 10px 0;
+}
+
+.metric-timeline {
+    margin-bottom: 30px;
+    padding: 0 10px;
+}
+
+.timeline-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #3b82f6;
+    align-items: center;
+}
+
+.timeline-duration {
+  background-color: #3b82f6;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+.timeline-full-range {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-top: 5px;
 }
 
 .table-container {

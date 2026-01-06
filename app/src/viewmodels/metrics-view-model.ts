@@ -99,7 +99,13 @@ function getShouldAccumulate(m: AggregatedMetric): boolean {
     return isDeltaSum && isNonMonotonic;
 }
 
-export function getChartData(selectedMetric: Metric, allMetrics: AggregatedMetric[], selectedResource: Resource|null): ChartData {
+export function getChartData(
+    selectedMetric: Metric,
+    allMetrics: AggregatedMetric[],
+    selectedResource: Resource|null,
+    startTimeMs: number,
+    endTimeMs: number
+): ChartData {
     const metricsToDisplay = getRelevantMetrics(selectedMetric, allMetrics, selectedResource);
 
     const allTimestamps = new Map<number, string>();
@@ -107,6 +113,9 @@ export function getChartData(selectedMetric: Metric, allMetrics: AggregatedMetri
         const points = m.data.data_points;
         points.forEach(dp => {
             const ts = Number(dp.time_ns / nanosInMs);
+            if (ts < startTimeMs) return;
+            if (ts > endTimeMs) return;
+
             const date = new Date(ts);
             allTimestamps.set(ts, date.toLocaleTimeString());
         });
@@ -128,6 +137,9 @@ export function getChartData(selectedMetric: Metric, allMetrics: AggregatedMetri
 
             (points as HistogramDataPoint[]).forEach(dp => {
                 const ts = Number(dp.time_ns / nanosInMs);
+                if (ts < startTimeMs) return;
+                if (ts > endTimeMs) return;
+
                 const avg = (dp.sum != null && dp.count > 0) ? dp.sum / dp.count : 0;
                 avgMap.set(ts, avg);
             });
@@ -150,8 +162,12 @@ export function getChartData(selectedMetric: Metric, allMetrics: AggregatedMetri
                 let value = dp.value ?? 0;
                 if (shouldAccumulate) {
                     accumulator += value;
+                    if (ts < startTimeMs) return;
+                    if (ts > endTimeMs) return;
                     dataMap.set(ts, accumulator);
                 } else {
+                    if (ts < startTimeMs) return;
+                    if (ts > endTimeMs) return;
                     dataMap.set(ts, value);
                 }
             });
@@ -177,7 +193,9 @@ export function getChartData(selectedMetric: Metric, allMetrics: AggregatedMetri
 export function getTableData(
     selectedMetric: Metric,
     allMetrics: AggregatedMetric[],
-    selectedResource: Resource|null
+    selectedResource: Resource|null,
+    startTimeMs: number,
+    endTimeMs: number
 ): MetricTableDataPoint[] {
     const metricsToDisplay = getRelevantMetrics(selectedMetric, allMetrics, selectedResource);
 
@@ -192,6 +210,14 @@ export function getTableData(
 
         points.forEach(dp => {
             const ts = Number(dp.time_ns / nanosInMs);
+            if (ts < startTimeMs) {
+                if (shouldAccumulate && dp.t === 'value') {
+                    accumulator += dp.value ?? 0;
+                }
+                return;
+            }
+            if (ts > endTimeMs) return;
+
             const date = new Date(ts);
             const timestampStr = date.toLocaleString();
 
