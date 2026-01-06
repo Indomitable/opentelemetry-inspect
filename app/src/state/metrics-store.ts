@@ -1,12 +1,13 @@
 import {defineStore} from "pinia";
 import {mapMetricResult, MetricDto, AggregatedMetric} from "../domain/metrics.ts";
-import {ref} from "vue";
+import {computed, ref} from "vue";
 import {useResourceStore} from "./resource-store.ts";
 import {sortBigIntAsc} from "../helpers/bigint-helpers.ts";
 
 export const useMetricsStore = defineStore('metrics', () => {
     const metrics = ref<AggregatedMetric[]>([]);
     const resourceStore = useResourceStore();
+    const totalCount = computed(() => metrics.value.length);
 
     function addMetric(dto: MetricDto) {
         if (!dto.data) {
@@ -38,6 +39,7 @@ export const useMetricsStore = defineStore('metrics', () => {
 
     return {
         metrics,
+        totalCount,
         addMetric,
     };
 });

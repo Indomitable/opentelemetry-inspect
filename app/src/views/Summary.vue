@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import {useLogsStore} from "../state/logs-store.ts";
 import {useTracesStore} from "../state/traces-store.ts";
+import {useMetricsStore} from "../state/metrics-store.ts";
 
 const logsStore = useLogsStore();
 const tracesStore = useTracesStore();
+const metricsStore = useMetricsStore();
 </script>
 
 <template>
@@ -20,6 +22,12 @@ const tracesStore = useTracesStore();
         <h3>Total Spans</h3>
         <router-link to="/traces" class="stat-value">
           {{ tracesStore.totalCount }}
+        </router-link>
+      </div>
+      <div class="stat-card">
+        <h3>Metrics</h3>
+        <router-link to="/metrics" class="stat-value">
+          {{ metricsStore.totalCount }}
         </router-link>
       </div>
     </div>
