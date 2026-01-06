@@ -44,7 +44,7 @@ const closeDetails = () => {
         v-model:selection="selectedLog" 
         :value="filteredLogs" 
         selectionMode="single"
-        dataKey="timestamp"
+        dataKey="time_unix_nano"
         :scrollable="true" 
         scrollHeight="flex"
         resizableColumns 

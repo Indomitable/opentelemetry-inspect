@@ -3,6 +3,7 @@ import {mapSpanDtoToSpan, Span, SpanDto} from "../domain/traces.ts";
 import {useResourceStore} from "./resource-store.ts";
 import {computed, ref} from "vue";
 import {Resource} from "../domain/resources.ts";
+import {insertSortedDesc} from "../helpers/collections-helpers.ts";
 
 export const useTracesStore = defineStore('traces', () => {
     const spans = ref<Span[]>([]);
@@ -12,7 +13,6 @@ export const useTracesStore = defineStore('traces', () => {
     const resourceStore = useResourceStore();
     const totalCount = computed(() => Object.keys(index.value).length);
     const flatSpans = computed(() => Object.values(index.value));
-    //const spansForResource = computed(() => (resource: string) => spans.value.filter(s => s.resource.key === resource));
 
     function addSpan(dto: SpanDto) {
         const key = `${dto.trace_id}-${dto.span_id}`;
@@ -38,7 +38,7 @@ export const useTracesStore = defineStore('traces', () => {
 
         if (!span.parent_span_id) {
             // no parent: place as root (top-level)
-            spans.value.push(span);
+            insertSortedDesc(spans.value, span, 'start_ns');
         } else {
             const parentKey = `${span.trace_id}-${span.parent_span_id}`;
             const parent = index.value[parentKey];
@@ -47,7 +47,7 @@ export const useTracesStore = defineStore('traces', () => {
                 parent.children.push(span);
             } else {
                 // parent missing: keep as root for display, and register as orphan
-                spans.value.push(span);
+                insertSortedDesc(spans.value, span, 'start_ns');
                 if (!_orphans.value[parentKey]) {
                     _orphans.value[parentKey] = [];
                 }

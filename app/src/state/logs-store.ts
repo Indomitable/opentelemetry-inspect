@@ -2,6 +2,7 @@ import {acceptHMRUpdate, defineStore} from "pinia";
 import {Log, LogDto, mapLogDtoToLog} from "../domain/logs.ts";
 import {useResourceStore} from "./resource-store.ts";
 import type {Resource} from "../domain/resources.ts";
+import {insertSortedDesc} from "../helpers/collections-helpers.ts";
 
 export const useLogsStore = defineStore('logs', {
     state: () => ({
@@ -16,12 +17,14 @@ export const useLogsStore = defineStore('logs', {
     actions: {
         addLog(dto: LogDto) {
             const log = mapLogDtoToLog(dto);
-            this.logs.push(log);
+            insertSortedDesc(this.logs, log, 'time_ns');
             const resourceStore = useResourceStore();
             resourceStore.addResource(log.resource);
         }
     }
 });
+
+
 
 if (import.meta.hot) {
     import.meta.hot.accept(acceptHMRUpdate(useLogsStore, import.meta.hot))
