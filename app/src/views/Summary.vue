@@ -36,7 +36,7 @@ const metricsStore = useMetricsStore();
 
 <style scoped>
 .summary-container {
-  padding: 20px;
+  padding-top: 5px;
 }
 
 .stats-grid {

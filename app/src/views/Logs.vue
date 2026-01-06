@@ -54,7 +54,8 @@ const closeDetails = () => {
         paginator
         :rows="25"
         :rows-per-page-options="[10, 25, 50, 100]"
-        class="p-datatable-sm list-table"
+        :size="'small'"
+        class="list-table"
       >
         <template #empty><div class="list-table__empty">No logs recorded.</div></template>
         <Column field="timestamp" header="Timestamp" sortable :style="{ width: '220px' }">

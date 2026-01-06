@@ -207,10 +207,10 @@ const filterMetrics = (resource: Resource|null) => {
                      selection-mode="single"
                      @row-click="(e) => selectMetric(e.data)"
                      :row-class="(data) => ({ 'selected-row': selectedMetric === data })"
-                     size="small"
                      scrollable
                      scroll-height="flex"
-                     class="p-datatable-sm list-table">
+                     :size="'small'"
+                     class="list-table">
             <template #empty><div class="list-table__empty">No metrics recorded.</div></template>
             <Column field="name" header="Name"></Column>
             <Column field="unit" header="Unit" style="width: 100px"></Column>

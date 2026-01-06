@@ -72,11 +72,11 @@ const closeDetails = () => {
           :scrollable="true"
           scroll-height="flex"
           column-resize-mode="fit"
-          size="small"
+          :size="'small'"
           paginator
           :rows="25"
           :rows-per-page-options="[10, 25, 50, 100]"
-          class="p-treetable-sm list-table"
+          class="list-table"
       >
         <template #empty><div class="list-table__empty">No spans recorded.</div></template>
         <Column field="name" header="Name" expander :style="{ width: '150px' }" />
@@ -88,7 +88,7 @@ const closeDetails = () => {
         </Column>
         <Column field="kind" header="Kind" :style="{ width: '80px' }" />
         <Column field="status.code" header="Status" :style="{ width: '80px' }" />
-        <Column style="width: 10rem" >
+        <Column style="width: 10rem; padding: 0 0.5rem" >
           <template #body="slotProps">
             <div v-if="slotProps.node.data.children.length > 0 && !slotProps.node.data.parent_span_id">
               <router-link :to="slotProps.node.link" class="link-button">
@@ -105,3 +105,9 @@ const closeDetails = () => {
     </Transition>
   </div>
 </template>
+
+<style>
+  .p-treetable-node-toggle-button {
+    height: 1.5rem !important;
+  }
+</style>
