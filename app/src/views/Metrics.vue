@@ -5,6 +5,7 @@ import ResourceSelector from "../components/resource-selector.vue";
 import {Metric} from "../domain/metrics.ts";
 import {getChartData, getTableData} from "../viewmodels/metrics-view-model.ts";
 import {Resource} from "../domain/resources.ts";
+import {formatAdaptive} from "../helpers/number-helpers.ts";
 
 const metricsStore = useMetricsStore();
 const selectedResource = ref<Resource|null>(null);
@@ -92,7 +93,7 @@ const selectMetric = (metric: Metric) => {
 // Update time range when total range changes (e.g. new data comes in)
 // but only if it hasn't been manually adjusted or if it's the first time
 watch(totalTimeRange, (newRange, oldRange) => {
-    if (!isTimeRangeInitialized.value && newRange.min !== newRange.max) {
+    if (!isTimeRangeInitialized.value && newRange.min !== Infinity) {
         timeRange.value = [newRange.min, newRange.max];
         isTimeRangeInitialized.value = true;
     } else if (isTimeRangeInitialized.value) {
@@ -170,7 +171,8 @@ const chartOptions = computed(() => {
             },
             y: {
                 ticks: {
-                    color: tickColor
+                    color: tickColor,
+                    callback: (value: any, index: number, ticks: any[]) => formatAdaptive(value, ticks)
                 },
                 grid: {
                     color: gridColor

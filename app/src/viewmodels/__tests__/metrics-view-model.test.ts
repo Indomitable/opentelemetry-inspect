@@ -481,4 +481,67 @@ describe('metrics-view-model', () => {
         expect(tableData.find(d => d.time_ns === 2000000000n)?.value).toBe(15);
         expect(tableData.find(d => d.time_ns === 3000000000n)?.value).toBe(17);
     });
+
+    it('should show data when startTimeMs and endTimeMs are the same as data point time', () => {
+        const metric: Metric = {
+            name: 'test_metric',
+            unit: 'ms',
+            description: 'desc',
+            scope: 'scope',
+            resource: { service_name: 's', service_instance_id: 'i', service_version: '', service_namespace: '', attributes: {}, key: 'r' },
+            key: 'k',
+            type: MetricType.Gauge,
+        };
+
+        const aggregatedMetric: AggregatedMetric = {
+            ...metric,
+            data: {
+                t: MetricType.Gauge,
+                data_points: [
+                    {
+                        t: 'value',
+                        start_time_unix_nano: '1000000000',
+                        time_unix_nano: '1000000000', // 1000 ms
+                        start_ns: 1000000000n,
+                        time_ns: 1000000000n,
+                        value: 42,
+                        attributes: {},
+                        exemplars: []
+                    }
+                ]
+            }
+        };
+
+        const chartData = getChartData(metric, [aggregatedMetric], null, 1000, 1000);
+        expect(chartData.labels.length).toBe(1);
+        expect(chartData.datasets[0].data).toEqual([42]);
+    });
+
+    it('should show data when data point is at the boundary of startTimeMs/endTimeMs', () => {
+        const metric: Metric = {
+            name: 'test_metric',
+            unit: 'ms',
+            description: 'desc',
+            scope: 'scope',
+            resource: { service_name: 's', service_instance_id: 'i', service_version: '', service_namespace: '', attributes: {}, key: 'r' },
+            key: 'k',
+            type: MetricType.Gauge,
+        };
+
+        const aggregatedMetric: AggregatedMetric = {
+            ...metric,
+            data: {
+                t: MetricType.Gauge,
+                data_points: [
+                    { t: 'value', start_time_unix_nano: '1000000000', time_unix_nano: '1000000000', start_ns: 1000000000n, time_ns: 1000000000n, value: 1, attributes: {}, exemplars: [] },
+                    { t: 'value', start_time_unix_nano: '2000000000', time_unix_nano: '2000000000', start_ns: 2000000000n, time_ns: 2000000000n, value: 2, attributes: {}, exemplars: [] },
+                    { t: 'value', start_time_unix_nano: '3000000000', time_unix_nano: '3000000000', start_ns: 3000000000n, time_ns: 3000000000n, value: 3, attributes: {}, exemplars: [] }
+                ]
+            }
+        };
+
+        const chartData = getChartData(metric, [aggregatedMetric], null, 1000, 3000);
+        expect(chartData.labels.length).toBe(3);
+        expect(chartData.datasets[0].data).toEqual([1, 2, 3]);
+    });
 });
