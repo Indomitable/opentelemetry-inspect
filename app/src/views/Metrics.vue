@@ -3,12 +3,13 @@ import {computed, ref} from "vue";
 import {useMetricsStore} from "../state/metrics-store.ts";
 import ResourceSelector from "../components/resource-selector.vue";
 import {Metric} from "../domain/metrics.ts";
-import {getChartData} from "../viewmodels/metrics-view-model.ts";
+import {getChartData, getTableData} from "../viewmodels/metrics-view-model.ts";
 import {Resource} from "../domain/resources.ts";
 
 const metricsStore = useMetricsStore();
 const selectedResource = ref<Resource|null>(null);
 const selectedMetric = ref<Metric | null>(null);
+const viewMode = ref<'chart' | 'table'>('chart');
 
 const filteredMetrics = computed(() => {
   if (selectedResource.value) {
@@ -40,6 +41,13 @@ const chartData = computed(() => {
   }
 
   return getChartData(selectedMetric.value, metricsStore.metrics, selectedResource.value);
+});
+
+const tableData = computed(() => {
+    if (!selectedMetric.value) {
+        return [];
+    }
+    return getTableData(selectedMetric.value, metricsStore.metrics, selectedResource.value);
 });
 
 const isDarkMode = ref(window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -126,17 +134,58 @@ const filterMetrics = (resource: Resource|null) => {
         </div>
 
         <div class="metric-details" v-if="selectedMetric">
-          <div class="chart-container">
-            <h3>{{ selectedMetric.name }} ({{ selectedMetric.unit }})</h3>
-            <div class="metric-info">
-                <span class="badge">{{ selectedMetric.type }}</span>
-                <span class="badge" v-if="selectedMetric.data && 'aggregation_temporality' in selectedMetric.data">{{ selectedMetric.data.aggregation_temporality }}</span>
-                <span class="badge" v-if="selectedMetric.data && 'is_monotonic' in selectedMetric.data && selectedMetric.data.is_monotonic">Monotonic</span>
+          <div class="metric-details__header">
+            <div class="metric-details__info">
+              <h3>{{ selectedMetric.name }} ({{ selectedMetric.unit }})</h3>
+              <div class="metric-info">
+                  <span class="badge">{{ selectedMetric.type }}</span>
+                  <span class="badge" v-if="selectedMetric.data && 'aggregation_temporality' in selectedMetric.data">{{ selectedMetric.data.aggregation_temporality }}</span>
+                  <span class="badge" v-if="selectedMetric.data && 'is_monotonic' in selectedMetric.data && selectedMetric.data.is_monotonic">Monotonic</span>
+              </div>
+              <p>{{ selectedMetric.description }}</p>
             </div>
-            <p>{{ selectedMetric.description }}</p>
+            <div class="metric-details__actions">
+              <SelectButton v-model="viewMode" :options="['chart', 'table']" aria-labelledby="basic">
+                <template #option="slotProps">
+                  <i :class="slotProps.option === 'chart' ? 'pi pi-chart-line' : 'pi pi-table'"></i>
+                </template>
+              </SelectButton>
+            </div>
+          </div>
+
+          <div v-if="viewMode === 'chart'" class="chart-container">
             <div class="chart-wrapper">
                 <Chart type="line" :data="chartData" :options="chartOptions" class="h-full" />
             </div>
+          </div>
+          <div v-else class="table-container">
+            <DataTable :value="tableData" size="small" scrollable scroll-height="flex" class="p-datatable-sm">
+                <Column field="timestamp" header="Time" style="width: 180px"></Column>
+                <Column field="resource" header="Resource" style="width: 300px" v-if="!selectedResource"></Column>
+                <Column field="value" header="Value">
+                    <template #body="slotProps">
+                        {{ typeof slotProps.data.value === 'number' ? slotProps.data.value.toFixed(2) : slotProps.data.value }}
+                    </template>
+                </Column>
+                <Column v-if="selectedMetric.type === 'Histogram'" field="p50" header="P50">
+                    <template #body="slotProps">{{ slotProps.data.p50?.toFixed(2) }}</template>
+                </Column>
+                <Column v-if="selectedMetric.type === 'Histogram'" field="p95" header="P95">
+                    <template #body="slotProps">{{ slotProps.data.p95?.toFixed(2) }}</template>
+                </Column>
+                <Column v-if="selectedMetric.type === 'Histogram'" field="p99" header="P99">
+                    <template #body="slotProps">{{ slotProps.data.p99?.toFixed(2) }}</template>
+                </Column>
+                <Column header="Attributes">
+                    <template #body="slotProps">
+                        <div class="attribute-chips">
+                            <span v-for="(val, key) in slotProps.data.attributes" :key="key" class="attribute-chip">
+                                {{ key }}: {{ val }}
+                            </span>
+                        </div>
+                    </template>
+                </Column>
+            </DataTable>
           </div>
         </div>
         <div class="metric-details-empty" v-else>
@@ -159,7 +208,7 @@ const filterMetrics = (resource: Resource|null) => {
 }
 
 .metrics-list {
-  flex: 1;
+  flex: 0 0 40%;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   overflow: hidden;
@@ -168,13 +217,46 @@ const filterMetrics = (resource: Resource|null) => {
 }
 
 .metric-details {
-  flex: 1;
+  flex: 1 0;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   padding: 20px;
   background-color: #fff;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+.metric-details__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+.metric-details__info h3 {
+    margin: 0 0 10px 0;
+}
+
+.table-container {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.attribute-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.attribute-chip {
+    background-color: #f3f4f6;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    border: 1px solid #e5e7eb;
 }
 
 .metric-details-empty {
@@ -237,6 +319,11 @@ const filterMetrics = (resource: Resource|null) => {
     .badge {
         background-color: #374151;
         color: #f3f4f6;
+    }
+    .attribute-chip {
+        background-color: #374151;
+        color: #f3f4f6;
+        border-color: #444;
     }
     :deep(.selected-row) {
         background-color: #2c3e50 !important;

@@ -2,6 +2,7 @@ import {defineStore} from "pinia";
 import {mapMetricResult, MetricDto, AggregatedMetric} from "../domain/metrics.ts";
 import {ref} from "vue";
 import {useResourceStore} from "./resource-store.ts";
+import {sortBigIntAsc} from "../helpers/bigint-helpers.ts";
 
 export const useMetricsStore = defineStore('metrics', () => {
     const metrics = ref<AggregatedMetric[]>([]);
@@ -21,7 +22,7 @@ export const useMetricsStore = defineStore('metrics', () => {
             existing.description = metric.description;
             const newDataPoints = metric.data!.data_points;
             existing.data.data_points.push(...newDataPoints as any[]); // the new data points should be the same type.
-            existing.data.data_points.sort((a, b) => a.time_ns < b.time_ns ? -1 : a.time_ns > b.time_ns ? 1 : 0);
+            existing.data.data_points.sort((a, b) => sortBigIntAsc(a.time_ns, b.time_ns));
 
             // Keep only the last 1000 data points.
             if (existing.data.data_points.length > 1000) {

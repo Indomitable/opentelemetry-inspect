@@ -33,4 +33,5 @@ app.component('TreeTable', defineAsyncComponent(() => import('primevue/treetable
 app.component('Column', Column);
 app.component('Select', defineAsyncComponent(() => import('primevue/select')));
 app.component('Chart', defineAsyncComponent(() => import('primevue/chart')));
+app.component('SelectButton', defineAsyncComponent(() => import('primevue/selectbutton')));
 app.mount("#app");

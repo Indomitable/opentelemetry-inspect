@@ -29,6 +29,7 @@ function createMockSpan(overrides: Partial<Span> = {}): Span {
     trace_id: 'trace-1',
     span_id: 'span-1',
     resource: {
+      key: '',
       service_name: 'test-service',
       service_version: '1.0.0',
       service_namespace: 'test',

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getChartData } from '../metrics-view-model';
+import { getChartData, getTableData } from '../metrics-view-model';
 import { Metric, AggregatedMetric, MetricType, AggregationTemporality } from '../../domain/metrics';
 
 describe('metrics-view-model', () => {
@@ -336,5 +336,50 @@ describe('metrics-view-model', () => {
         const chartData = getChartData(metric, [aggregatedMetric], null);
 
         expect(chartData.datasets[0].data).toEqual([10, 5]);
+    });
+
+    it('should generate table data correctly', () => {
+        const metric: Metric = {
+            name: 'test_metric',
+            unit: 'ms',
+            description: 'desc',
+            scope: 'scope',
+            resource: {
+                service_name: 'service-a',
+                service_instance_id: 'instance-1',
+                service_version: '',
+                service_namespace: '',
+                attributes: {},
+                key: 'r1'
+            },
+            key: 'key1',
+            type: MetricType.Gauge,
+        };
+
+        const aggregatedMetric: AggregatedMetric = {
+            ...metric,
+            data: {
+                t: MetricType.Gauge,
+                data_points: [
+                    {
+                        t: 'value',
+                        start_time_unix_nano: '1000000000',
+                        time_unix_nano: '1000000000',
+                        start_ns: 1000000000n,
+                        time_ns: 1000000000n,
+                        value: 42,
+                        attributes: { host: 'localhost' },
+                        exemplars: []
+                    }
+                ]
+            }
+        };
+
+        const tableData = getTableData(metric, [aggregatedMetric], null);
+
+        expect(tableData.length).toBe(1);
+        expect(tableData[0].value).toBe(42);
+        expect(tableData[0].attributes).toEqual({ host: 'localhost' });
+        expect(tableData[0].resource).toContain('service-a');
     });
 });

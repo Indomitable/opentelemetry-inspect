@@ -63,6 +63,7 @@ export const useTracesStore = defineStore('traces', () => {
     return {
         spans,
         index,
+        _orphans,
         totalCount,
         flatSpans,
         addSpan,
