@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,18 +20,26 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/log/global"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
-var tracer trace.Tracer
-var logger *slog.Logger
+var (
+	tracer       trace.Tracer
+	logger       *slog.Logger
+	meter        metric.Meter
+	opsCounter   metric.Int64Counter
+	durHistogram metric.Float64Histogram
+)
 
 type Todo struct {
 	ID        string `json:"id"`
@@ -39,7 +47,14 @@ type Todo struct {
 	Completed bool   `json:"completed"`
 }
 
-var todos []Todo
+var (
+	todos = []Todo{
+		{ID: "1", Title: "Learn OpenTelemetry", Completed: false},
+	}
+	mu sync.Mutex
+)
+
+const serviceName = "go-todo-service"
 
 func main() {
 	// Handle SIGINT (CTRL+C) gracefully.
@@ -49,17 +64,29 @@ func main() {
 
 	shutdown, err := setupOTelSDK(ctx)
 	if err != nil {
-		log.Fatalf("failed to initialize tracer: %v", err)
+		log.Fatalf("failed to initialize OTel SDK: %v", err)
 	}
 	defer func() {
-		err = errors.Join(err, shutdown(context.Background()))
+		if err := shutdown(context.Background()); err != nil {
+			log.Printf("failed to shutdown OTel SDK: %v", err)
+		}
 	}()
 
-	tracer = otel.Tracer("todo-service")
-	logger = logbridge.NewLogger("todo-server")
-	logger.Info("Starting application...")
+	tracer = otel.Tracer(serviceName)
+	meter = otel.Meter(serviceName)
+	logger = logbridge.NewLogger(serviceName)
 
-	todos = append(todos, Todo{ID: "1", Title: "Learn OpenTelemetry", Completed: false})
+	var errMetric error
+	opsCounter, errMetric = meter.Int64Counter("todo.operations", metric.WithDescription("Number of todo operations"))
+	if errMetric != nil {
+		log.Fatalf("failed to create counter: %v", errMetric)
+	}
+	durHistogram, errMetric = meter.Float64Histogram("todo.duration", metric.WithDescription("Duration of todo operations"))
+	if errMetric != nil {
+		log.Fatalf("failed to create histogram: %v", errMetric)
+	}
+
+	logger.Info("Starting application...")
 
 	err = startServer(ctx, stop)
 	if err != nil {
@@ -72,6 +99,8 @@ func startServer(ctx context.Context, stop func()) error {
 	r.HandleFunc("/todos", getTodos).Methods("GET")
 	r.HandleFunc("/todos", createTodo).Methods("POST")
 	r.HandleFunc("/todos/{id}", getTodo).Methods("GET")
+	r.HandleFunc("/todos/{id}", updateTodo).Methods("PUT")
+	r.HandleFunc("/todos/{id}", deleteTodo).Methods("DELETE")
 
 	logger.Info("Server listening on :43521")
 	srv := &http.Server{
@@ -105,11 +134,7 @@ func startServer(ctx context.Context, stop func()) error {
 
 func setupOTelSDK(ctx context.Context) (func(context.Context) error, error) {
 	var shutdownFuncs []func(context.Context) error
-	var err error
 
-	// shutdown calls cleanup functions registered via shutdownFuncs.
-	// The errors from the calls are joined.
-	// Each registered cleanup will be invoked once.
 	shutdown := func(ctx context.Context) error {
 		var err error
 		for _, fn := range shutdownFuncs {
@@ -119,9 +144,8 @@ func setupOTelSDK(ctx context.Context) (func(context.Context) error, error) {
 		return err
 	}
 
-	// handleErr calls shutdown for cleanup and makes sure that all errors are returned.
 	handleErr := func(inErr error) {
-		err = errors.Join(inErr, shutdown(ctx))
+		_ = shutdown(ctx)
 	}
 
 	// Set up propagator.
@@ -129,18 +153,17 @@ func setupOTelSDK(ctx context.Context) (func(context.Context) error, error) {
 	otel.SetTextMapPropagator(prop)
 
 	// Set up resource.
-	resource, _ := resource.Merge(
+	res, _ := resource.Merge(
 		resource.Default(),
 		resource.NewWithAttributes(
 			semconv.SchemaURL,
-			semconv.ServiceNameKey.String("todo-service"),
+			semconv.ServiceNameKey.String(serviceName),
 			semconv.ServiceVersionKey.String("1.0.0"),
-			semconv.ServiceInstanceIDKey.String(uuid.New().String()),
 		),
 	)
 
 	// Set up trace provider.
-	tracerProvider, err := newTracerProvider(ctx, resource)
+	tracerProvider, err := newTracerProvider(ctx, res)
 	if err != nil {
 		handleErr(err)
 		return shutdown, err
@@ -149,16 +172,16 @@ func setupOTelSDK(ctx context.Context) (func(context.Context) error, error) {
 	otel.SetTracerProvider(tracerProvider)
 
 	// Set up meter provider.
-	// meterProvider, err := newMeterProvider()
-	// if err != nil {
-	// 	handleErr(err)
-	// 	return shutdown, err
-	// }
-	// shutdownFuncs = append(shutdownFuncs, meterProvider.Shutdown)
-	// otel.SetMeterProvider(meterProvider)
+	meterProvider, err := newMeterProvider(ctx, res)
+	if err != nil {
+		handleErr(err)
+		return shutdown, err
+	}
+	shutdownFuncs = append(shutdownFuncs, meterProvider.Shutdown)
+	otel.SetMeterProvider(meterProvider)
 
 	// Set up logger provider.
-	loggerProvider, err := newLoggerProvider(ctx, resource)
+	loggerProvider, err := newLoggerProvider(ctx, res)
 	if err != nil {
 		handleErr(err)
 		return shutdown, err
@@ -166,7 +189,7 @@ func setupOTelSDK(ctx context.Context) (func(context.Context) error, error) {
 	shutdownFuncs = append(shutdownFuncs, loggerProvider.Shutdown)
 	global.SetLoggerProvider(loggerProvider)
 
-	return shutdown, err
+	return shutdown, nil
 }
 
 func newPropagator() propagation.TextMapPropagator {
@@ -176,77 +199,184 @@ func newPropagator() propagation.TextMapPropagator {
 	)
 }
 
-func newTracerProvider(ctx context.Context, resource *resource.Resource) (*sdktrace.TracerProvider, error) {
+func newTracerProvider(ctx context.Context, res *resource.Resource) (*sdktrace.TracerProvider, error) {
 	exporter, err := otlptracehttp.New(ctx, otlptracehttp.WithInsecure(), otlptracehttp.WithEndpoint("localhost:4318"))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create trace exporter: %w", err)
+		return nil, err
 	}
-	bsp := sdktrace.NewBatchSpanProcessor(exporter)
 	traceProvider := sdktrace.NewTracerProvider(
-		sdktrace.WithResource(resource),
-		sdktrace.WithSpanProcessor(bsp),
+		sdktrace.WithResource(res),
+		sdktrace.WithBatcher(exporter),
 	)
 	return traceProvider, nil
 }
 
-func newLoggerProvider(ctx context.Context, resource *resource.Resource) (*sdklog.LoggerProvider, error) {
+func newMeterProvider(ctx context.Context, res *resource.Resource) (*sdkmetric.MeterProvider, error) {
+	exporter, err := otlpmetrichttp.New(ctx, otlpmetrichttp.WithInsecure(), otlpmetrichttp.WithEndpoint("localhost:4318"))
+	if err != nil {
+		return nil, err
+	}
+	meterProvider := sdkmetric.NewMeterProvider(
+		sdkmetric.WithResource(res),
+		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exporter)),
+	)
+	return meterProvider, nil
+}
+
+func newLoggerProvider(ctx context.Context, res *resource.Resource) (*sdklog.LoggerProvider, error) {
 	exporter, err := otlploghttp.New(ctx, otlploghttp.WithInsecure(), otlploghttp.WithEndpoint("localhost:4318"))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create log exporter: %w", err)
+		return nil, err
 	}
-	processor := sdklog.NewBatchProcessor(exporter)
 	loggerProvider := sdklog.NewLoggerProvider(
-		sdklog.WithResource(resource),
-		sdklog.WithProcessor(processor),
+		sdklog.WithResource(res),
+		sdklog.WithProcessor(sdklog.NewBatchProcessor(exporter)),
 	)
 	return loggerProvider, nil
 }
 
 func getTodos(w http.ResponseWriter, r *http.Request) {
-	ctx, span := tracer.Start(r.Context(), "getTodos", trace.WithSpanKind(trace.SpanKindServer), trace.WithAttributes(attribute.String("http.method", r.Method)))
-	time.Sleep(1 * time.Millisecond)
+	startTime := time.Now()
+	ctx, span := tracer.Start(r.Context(), "ListTodos")
 	defer span.End()
-	logger.ErrorContext(ctx, "getTodos - error message", slog.Group("test",
-		slog.Duration("testDuration", 1*time.Second),
-		slog.Int("testInt", 1),
-		slog.Bool("testBool", true),
-	))
 
-	ctx, childSpan := tracer.Start(ctx, "getTodosChild")
-	time.Sleep(2 * time.Millisecond)
-	defer childSpan.End()
+	logger.InfoContext(ctx, "Processing GET /todos")
 
-	_, childChildSpan := tracer.Start(ctx, "getTodosChildChild")
-	time.Sleep(1 * time.Millisecond)
-	childChildSpan.End()
-
-	time.Sleep(100 * time.Microsecond)
-	logger.InfoContext(ctx, "getTodosChild - log message: {}", "2", slog.String("test", "value"))
-
+	mu.Lock()
 	data, _ := json.Marshal(todos)
+	mu.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
 	w.Write(data)
+
+	duration := time.Since(startTime).Seconds()
+	durHistogram.Record(ctx, duration, metric.WithAttributes(attribute.String("operation", "ListTodos")))
+	opsCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("operation", "ListTodos"), attribute.String("status", "success")))
+	logger.InfoContext(ctx, "Finished GET /todos")
 }
 
 func createTodo(w http.ResponseWriter, r *http.Request) {
-	_, span := tracer.Start(r.Context(), "createTodo")
+	startTime := time.Now()
+	ctx, span := tracer.Start(r.Context(), "AddTodo")
 	defer span.End()
-	// In a real application, you would decode the request body to create a new todo
-	logger.Info("createTodo")
-	span.AddEvent("createTodo")
+
+	logger.InfoContext(ctx, "Processing POST /todos")
+
 	var todo Todo
-	err := json.NewDecoder(r.Body).Decode(&todo)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&todo); err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
-		logger.Error("failed to decode todo", "error", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		opsCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("operation", "AddTodo"), attribute.String("status", "error")))
 		return
 	}
+
+	todo.ID = uuid.New().String()
+	mu.Lock()
 	todos = append(todos, todo)
+	mu.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(todo)
+
+	duration := time.Since(startTime).Seconds()
+	durHistogram.Record(ctx, duration, metric.WithAttributes(attribute.String("operation", "AddTodo")))
+	opsCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("operation", "AddTodo"), attribute.String("status", "success")))
+	logger.InfoContext(ctx, "Finished POST /todos")
 }
 
 func getTodo(w http.ResponseWriter, r *http.Request) {
-	_, span := tracer.Start(r.Context(), "getTodo")
+	startTime := time.Now()
+	ctx, span := tracer.Start(r.Context(), "GetTodo")
 	defer span.End()
-	// In a real application, you would get the todo with the given ID
-	fmt.Fprintln(w, "getTodo")
+
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	logger.InfoContext(ctx, "Processing GET /todos/"+id)
+
+	mu.Lock()
+	defer mu.Unlock()
+	for _, t := range todos {
+		if t.ID == id {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(t)
+
+			duration := time.Since(startTime).Seconds()
+			durHistogram.Record(ctx, duration, metric.WithAttributes(attribute.String("operation", "GetTodo")))
+			opsCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("operation", "GetTodo"), attribute.String("status", "success")))
+			logger.InfoContext(ctx, "Finished GET /todos/"+id)
+			return
+		}
+	}
+
+	http.Error(w, "Todo not found", http.StatusNotFound)
+	opsCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("operation", "GetTodo"), attribute.String("status", "not_found")))
+}
+
+func updateTodo(w http.ResponseWriter, r *http.Request) {
+	startTime := time.Now()
+	ctx, span := tracer.Start(r.Context(), "UpdateTodo")
+	defer span.End()
+
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	logger.InfoContext(ctx, "Processing PUT /todos/"+id)
+
+	var updatedTodo Todo
+	if err := json.NewDecoder(r.Body).Decode(&updatedTodo); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	for i, t := range todos {
+		if t.ID == id {
+			todos[i].Title = updatedTodo.Title
+			todos[i].Completed = updatedTodo.Completed
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(todos[i])
+
+			duration := time.Since(startTime).Seconds()
+			durHistogram.Record(ctx, duration, metric.WithAttributes(attribute.String("operation", "UpdateTodo")))
+			opsCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("operation", "UpdateTodo"), attribute.String("status", "success")))
+			logger.InfoContext(ctx, "Finished PUT /todos/"+id)
+			return
+		}
+	}
+
+	http.Error(w, "Todo not found", http.StatusNotFound)
+	opsCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("operation", "UpdateTodo"), attribute.String("status", "not_found")))
+}
+
+func deleteTodo(w http.ResponseWriter, r *http.Request) {
+	startTime := time.Now()
+	ctx, span := tracer.Start(r.Context(), "DeleteTodo")
+	defer span.End()
+
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	logger.InfoContext(ctx, "Processing DELETE /todos/"+id)
+
+	mu.Lock()
+	defer mu.Unlock()
+	for i, t := range todos {
+		if t.ID == id {
+			todos = append(todos[:i], todos[i+1:]...)
+			w.WriteHeader(http.StatusNoContent)
+
+			duration := time.Since(startTime).Seconds()
+			durHistogram.Record(ctx, duration, metric.WithAttributes(attribute.String("operation", "DeleteTodo")))
+			opsCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("operation", "DeleteTodo"), attribute.String("status", "success")))
+			logger.InfoContext(ctx, "Finished DELETE /todos/"+id)
+			return
+		}
+	}
+
+	http.Error(w, "Todo not found", http.StatusNotFound)
+	opsCounter.Add(ctx, 1, metric.WithAttributes(attribute.String("operation", "DeleteTodo"), attribute.String("status", "not_found")))
 }
