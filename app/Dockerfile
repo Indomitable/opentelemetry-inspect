@@ -45,6 +45,7 @@ COPY --from=frontend-builder /app/dist /app/dist
 ENV STATIC_DIR=/app/dist
 
 # Expose the OTLP and Web port
+EXPOSE 4317
 EXPOSE 4318
 
 # Run the application
