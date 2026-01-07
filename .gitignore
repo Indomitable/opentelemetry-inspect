@@ -6,4 +6,5 @@ target/
 *.user
 .vite/
 .idea/
-
+node_modules/
+.venv/

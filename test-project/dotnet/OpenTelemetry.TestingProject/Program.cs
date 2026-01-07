@@ -3,105 +3,163 @@ using System.Diagnostics.Metrics;
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Resources;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
-const string activitySourceName = "OpenTelemetry.Inspect";
+const string serviceName = "dotnet-todo-service";
 
 builder.Services.AddOpenApi();
-///
-/// <see ref="OtlpExporterOptions" />
-/// internal const string DefaultGrpcEndpoint = "http://localhost:4317";
-/// internal const string DefaultHttpEndpoint = "http://localhost:4318";
-///
-// if OTEL_EXPORTER_OTLP_ENDPOINT is set from OT plugin.
-// https://github.com/open-telemetry/opentelemetry-dotnet/tree/main/src/OpenTelemetry.Exporter.OpenTelemetryProtocol#environment-variables
-// https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/#endpoint-configuration
+
 var otlpAddress = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
-var protocol = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_PROTOCOL"); // can be "grpc", "http/protobuf" or "http/json"
+var protocol = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_PROTOCOL");
+
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(rb =>
     {
-        rb.AddService(activitySourceName, "open-telemetry-inspect", "1.0.0");
+        rb.AddService(serviceName, serviceVersion: "1.0.0");
     })
     .WithTracing(tb =>
     {
-        tb.AddSource(activitySourceName);
+        tb.AddSource(serviceName);
     })
     .WithLogging()
     .WithMetrics(mb =>
     {
-        mb.AddMeter(activitySourceName);
+        mb.AddMeter(serviceName);
     })
     .UseOtlpExporter(string.IsNullOrEmpty(protocol) || protocol == "grpc" ? OtlpExportProtocol.Grpc : OtlpExportProtocol.HttpProtobuf, new Uri(otlpAddress ?? "http://127.0.0.1:4318"));
 
-builder.Services.AddSingleton<ActivitySource>(_ =>  new ActivitySource(activitySourceName));
-builder.Services.AddSingleton<Meter>(_ => new Meter(activitySourceName));
+builder.Services.AddSingleton<ActivitySource>(_ => new ActivitySource(serviceName));
+builder.Services.AddSingleton<Meter>(_ => new Meter(serviceName));
 
 var app = builder.Build();
 
-var logger = app.Services.GetRequiredService<ILogger<WeatherForecast>>();
-logger.LogCritical("Application has been built.");
+var logger = app.Services.GetRequiredService<ILogger<Program>>();
+logger.LogInformation("Application starting...");
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
-var summaries = new[]
+var todos = new List<Todo>
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
+    new Todo(Guid.NewGuid().ToString(), "Learn OpenTelemetry", false)
 };
 
-app.MapGet("/weatherforecast", async (ActivitySource activitySource, Meter meter, ILogger<WeatherForecast> logger) =>
+app.MapGet("/todos", (ActivitySource activitySource, Meter meter, ILogger<Program> logger) =>
 {
-    using var activity = activitySource.StartActivity("GetWeatherForecast", ActivityKind.Server, null, new Dictionary<string, object?>()
-    {
-        ["date"] = DateTimeOffset.UtcNow
-    });
-    logger.LogInformation("Weather forecast for {date}", DateTimeOffset.UtcNow);
-    
-    var historgram = meter.CreateHistogram<long>("TimeToFetch", "ms", "Time to fetch weather forecast",
-        new Dictionary<string, object?>
-        {
-            ["date"] = DateTimeOffset.UtcNow
-        });
-    
-    var counter = meter.CreateCounter<long>("CalledCount", "units", "How many times the endpoint is called", [
-        new KeyValuePair<string, object?>("Endpoint", "GetWeatherForecast")
-    ]);
-    counter.Add(1, new KeyValuePair<string, object?>("TemperatureC", 1));
-    
-    var upDown = meter.CreateUpDownCounter<int>("ProcessingRequests", "requests", "How many current requests are processed", [new KeyValuePair<string, object?>("test", true)]);
-    upDown.Add(1);
-    
-    var gauge = meter.CreateGauge<long>("CurrentMemory", "bytes", "How much memory is allocated.", [ new KeyValuePair<string, object?>("test", new Dictionary<string, string> { ["test"] = "1" })]);
-    var watch = Stopwatch.StartNew();
-    gauge.Record(GC.GetTotalAllocatedBytes());
-    
-    await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(10, 2000)));
-    
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    
-    upDown.Add(-1);
-    watch.Stop();
-    historgram.Record(watch.ElapsedMilliseconds, new KeyValuePair<string, object?>("status", 1));
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+    var startTime = Stopwatch.GetTimestamp();
+    using var activity = activitySource.StartActivity("ListTodos");
+    logger.LogInformation("Processing GET /todos");
 
-logger.LogError(new Exception("Test Exception"), "Starting application.");
+    var durationHistogram = meter.CreateHistogram<double>("todo.duration");
+    var opsCounter = meter.CreateCounter<long>("todo.operations");
+
+    var result = todos.ToArray();
+
+    var elapsed = Stopwatch.GetElapsedTime(startTime).TotalSeconds;
+    durationHistogram.Record(elapsed, new KeyValuePair<string, object?>("operation", "ListTodos"));
+    opsCounter.Add(1, new KeyValuePair<string, object?>("operation", "ListTodos"), new KeyValuePair<string, object?>("status", "success"));
+    logger.LogInformation("Finished GET /todos");
+    return Results.Ok(result);
+});
+
+app.MapGet("/todos/{id}", (string id, ActivitySource activitySource, Meter meter, ILogger<Program> logger) =>
+{
+    var startTime = Stopwatch.GetTimestamp();
+    using var activity = activitySource.StartActivity("GetTodo");
+    logger.LogInformation("Processing GET /todos/{id}", id);
+
+    var durationHistogram = meter.CreateHistogram<double>("todo.duration");
+    var opsCounter = meter.CreateCounter<long>("todo.operations");
+
+    var todo = todos.FirstOrDefault(t => t.Id == id);
+    if (todo == null)
+    {
+        opsCounter.Add(1, new KeyValuePair<string, object?>("operation", "GetTodo"), new KeyValuePair<string, object?>("status", "not_found"));
+        return Results.NotFound();
+    }
+
+    var elapsed = Stopwatch.GetElapsedTime(startTime).TotalSeconds;
+    durationHistogram.Record(elapsed, new KeyValuePair<string, object?>("operation", "GetTodo"));
+    opsCounter.Add(1, new KeyValuePair<string, object?>("operation", "GetTodo"), new KeyValuePair<string, object?>("status", "success"));
+    logger.LogInformation("Finished GET /todos/{id}", id);
+    return Results.Ok(todo);
+});
+
+app.MapPost("/todos", ([FromBody] TodoInput input, ActivitySource activitySource, Meter meter, ILogger<Program> logger) =>
+{
+    var startTime = Stopwatch.GetTimestamp();
+    using var activity = activitySource.StartActivity("AddTodo");
+    logger.LogInformation("Processing POST /todos");
+
+    var durationHistogram = meter.CreateHistogram<double>("todo.duration");
+    var opsCounter = meter.CreateCounter<long>("todo.operations");
+
+    var todo = new Todo(Guid.NewGuid().ToString(), input.Title, false);
+    todos.Add(todo);
+
+    var elapsed = Stopwatch.GetElapsedTime(startTime).TotalSeconds;
+    durationHistogram.Record(elapsed, new KeyValuePair<string, object?>("operation", "AddTodo"));
+    opsCounter.Add(1, new KeyValuePair<string, object?>("operation", "AddTodo"), new KeyValuePair<string, object?>("status", "success"));
+    logger.LogInformation("Finished POST /todos");
+    return Results.Created($"/todos/{todo.Id}", todo);
+});
+
+app.MapPut("/todos/{id}", (string id, [FromBody] TodoUpdate input, ActivitySource activitySource, Meter meter, ILogger<Program> logger) =>
+{
+    var startTime = Stopwatch.GetTimestamp();
+    using var activity = activitySource.StartActivity("UpdateTodo");
+    logger.LogInformation("Processing PUT /todos/{id}", id);
+
+    var durationHistogram = meter.CreateHistogram<double>("todo.duration");
+    var opsCounter = meter.CreateCounter<long>("todo.operations");
+
+    var index = todos.FindIndex(t => t.Id == id);
+    if (index == -1)
+    {
+        opsCounter.Add(1, new KeyValuePair<string, object?>("operation", "UpdateTodo"), new KeyValuePair<string, object?>("status", "not_found"));
+        return Results.NotFound();
+    }
+
+    todos[index] = todos[index] with { Title = input.Title, Completed = input.Completed };
+
+    var elapsed = Stopwatch.GetElapsedTime(startTime).TotalSeconds;
+    durationHistogram.Record(elapsed, new KeyValuePair<string, object?>("operation", "UpdateTodo"));
+    opsCounter.Add(1, new KeyValuePair<string, object?>("operation", "UpdateTodo"), new KeyValuePair<string, object?>("status", "success"));
+    logger.LogInformation("Finished PUT /todos/{id}", id);
+    return Results.Ok(todos[index]);
+});
+
+app.MapDelete("/todos/{id}", (string id, ActivitySource activitySource, Meter meter, ILogger<Program> logger) =>
+{
+    var startTime = Stopwatch.GetTimestamp();
+    using var activity = activitySource.StartActivity("DeleteTodo");
+    logger.LogInformation("Processing DELETE /todos/{id}", id);
+
+    var durationHistogram = meter.CreateHistogram<double>("todo.duration");
+    var opsCounter = meter.CreateCounter<long>("todo.operations");
+
+    var index = todos.FindIndex(t => t.Id == id);
+    if (index == -1)
+    {
+        opsCounter.Add(1, new KeyValuePair<string, object?>("operation", "DeleteTodo"), new KeyValuePair<string, object?>("status", "not_found"));
+        return Results.NotFound();
+    }
+
+    todos.RemoveAt(index);
+
+    var elapsed = Stopwatch.GetElapsedTime(startTime).TotalSeconds;
+    durationHistogram.Record(elapsed, new KeyValuePair<string, object?>("operation", "DeleteTodo"));
+    opsCounter.Add(1, new KeyValuePair<string, object?>("operation", "DeleteTodo"), new KeyValuePair<string, object?>("status", "success"));
+    logger.LogInformation("Finished DELETE /todos/{id}", id);
+    return Results.NoContent();
+});
+
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+record Todo(string Id, string Title, bool Completed);
+record TodoInput(string Title);
+record TodoUpdate(string Title, bool Completed);

@@ -1,0 +1,25 @@
+{
+  "name": "todo-service-js",
+  "version": "1.0.0",
+  "description": "JavaScript TODO service with OpenTelemetry",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "1.9.0",
+    "@opentelemetry/api-logs": "0.208.0",
+    "@opentelemetry/exporter-logs-otlp-http": "0.208.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "0.208.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.208.0",
+    "@opentelemetry/resources": "2.2.0",
+    "@opentelemetry/sdk-logs": "0.208.0",
+    "@opentelemetry/sdk-metrics": "2.2.0",
+    "@opentelemetry/sdk-node": "0.208.0",
+    "@opentelemetry/sdk-trace-base": "2.2.0",
+    "@opentelemetry/sdk-trace-node": "2.2.0",
+    "@opentelemetry/semantic-conventions": "1.38.0",
+    "express": "4.22.1",
+    "uuid": "11.1.0"
+  }
+}
