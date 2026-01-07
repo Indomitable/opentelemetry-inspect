@@ -4,6 +4,7 @@ version = "1.0.0"
 description = "OpenTelemetry Inspector: View Logs, Traces and Metrics"
 authors = ["indomitable"]
 edition = "2021"
+license = "GPL-3"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
