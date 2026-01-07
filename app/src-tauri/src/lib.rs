@@ -37,7 +37,6 @@ pub fn tauri_main() {
     let _ = rustls::crypto::ring::default_provider().install_default();
 
     tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let app_state = create_state();
             app.manage(app_state.clone());
