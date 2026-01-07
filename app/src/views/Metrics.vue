@@ -172,7 +172,7 @@ const chartOptions = computed(() => {
             y: {
                 ticks: {
                     color: tickColor,
-                    callback: (value: any, index: number, ticks: any[]) => formatAdaptive(value, ticks)
+                    callback: (value: any, _: number, ticks: any[]) => formatAdaptive(value, ticks)
                 },
                 grid: {
                     color: gridColor

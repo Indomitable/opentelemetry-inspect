@@ -10,7 +10,10 @@ const metricsStore = useMetricsStore();
 
 <template>
   <div class="summary-container">
-    <h1>Summary</h1>
+    <div class="header-row">
+      <h1>Summary</h1>
+      <span class="version-tag">v1.0.0</span>
+    </div>
     <div class="stats-grid">
       <div class="stat-card">
         <h3>Total Logs</h3>
@@ -37,6 +40,27 @@ const metricsStore = useMetricsStore();
 <style scoped>
 .summary-container {
   padding-top: 5px;
+}
+
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.version-tag {
+  font-size: 0.9rem;
+  color: #888;
+  background: #eee;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .version-tag {
+    background: #444;
+    color: #bbb;
+  }
 }
 
 .stats-grid {
