@@ -17,11 +17,10 @@ const PROTOBUF_CONTENT_TYPE: &str = "application/x-protobuf";
 const JSON_CONTENT_TYPE: &str = "application/json";
 
 fn get_otlp_routes() -> Router<AppState> {
-    let otlp_routes = Router::new()
+    Router::new()
         .route("/logs", post(handle_logs))
         .route("/traces", post(handle_traces))
-        .route("/metrics", post(handle_metrics));    
-    otlp_routes
+        .route("/metrics", post(handle_metrics))
 }
 
 pub async fn init_axum(state: AppState) -> Result<(), Box<dyn std::error::Error>> {
@@ -34,7 +33,6 @@ pub async fn init_axum(state: AppState) -> Result<(), Box<dyn std::error::Error>
 
     if cfg!(feature = "docker") {
         let static_dir = std::env::var("STATIC_DIR").unwrap_or_else(|_| "../dist".to_string());
-        println!("Serving static files from: {}", static_dir);
         let serve_dir = ServeDir::new(&static_dir)
             .fallback(tower_http::services::ServeFile::new(format!("{}/index.html", static_dir)));
         app = app.fallback_service(serve_dir);

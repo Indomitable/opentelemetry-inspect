@@ -16,10 +16,12 @@ pub(crate) enum TopicMessage {
     Logs { topic: String, payload: Box<LogDto> },
     Spans { topic: String, payload: Box<SpanDto> },
     Metrics { topic: String, payload: Box<MetricDto> },
+    #[allow(dead_code)] // use any for testing purposes
     Any { topic: String, payload: String }
 }
 
 impl TopicMessage {
+    #[allow(dead_code)]
     pub fn new(topic: &str, payload: &str) -> Self {
         TopicMessage::Any { topic: topic.to_string(), payload: payload.to_string() }
     }
@@ -96,6 +98,7 @@ impl SubscriptionManager {
         }
     }
 
+    #[allow(dead_code)]
     pub fn publish(&self, topic: &str, payload: &str) -> Result<usize, broadcast::error::SendError<TopicMessage>> {
         let event = TopicMessage::new(topic, payload);
         if let Some(tx) = self.channels.get(event.topic()) {
