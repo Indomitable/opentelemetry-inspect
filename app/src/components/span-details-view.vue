@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import ResourceDetailsView from "./resource-details-view.vue";
 import {Span} from "../domain/traces.ts";
+import {computed} from "vue";
 const { span } = defineProps<{ span: Span }>();
 const emits = defineEmits<{
   (e: 'close'): void;
 }>();
+const attributes = computed(() => Object.entries(span.tags));
 </script>
 
 <template>
@@ -86,13 +88,13 @@ const emits = defineEmits<{
         </div>
       </div>
 
-      <h3 v-if="span.tags.length">Attributes</h3>
-      <div class="details-table" v-if="span.tags.length">
+      <h3 v-if="attributes.length">Attributes</h3>
+      <div class="details-table" v-if="attributes.length">
         <div class="details-row header">
           <div>Key</div>
           <div>Value</div>
         </div>
-        <div v-for="(value, key) in span.tags" :key="key" class="details-row">
+        <div v-for="[key, value] in attributes" :key="key" class="details-row">
           <div>{{ key }}</div>
           <div>{{ value }}</div>
         </div>
