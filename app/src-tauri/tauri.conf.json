@@ -2,11 +2,11 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "OpenTelemetry Inspector",
   "version": "1.0.3",
-  "identifier": "eu.opentelemetry-inspect",
+  "identifier": "eu.venfen.opentelemetry-inspect",
   "build": {
     "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "bun run build",
+    "beforeBuildCommand": "bun run build || npm run build",
     "frontendDist": "../dist"
   },
   "app": {

@@ -1,0 +1,61 @@
+app-id: eu.venfen.opentelemetry-inspect
+runtime: org.gnome.Platform
+runtime-version: '49'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+  - org.freedesktop.Sdk.Extension.node24
+command: opentelemetry-inspect
+separate-locales: false
+finish-args:
+  # Network access for OTel listeners (Ports 4317 [gRPC], 4318 [HTTP])
+  - --share=network
+  - --share=ipc
+  # GUI access (GTK/WebKit)
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # Notifications
+  - --talk-name=org.freedesktop.Notifications
+
+modules:
+  - name: protobuf
+    buildsystem: cmake-ninja
+    config-opts:
+      - -Dprotobuf_BUILD_TESTS=OFF
+    sources:
+      - type: archive
+        url: https://github.com/protocolbuffers/protobuf/releases/download/v33.2/protobuf-33.2.tar.gz
+        sha256: 6b6599b54c88d75904b7471f5ca34a725fa0af92e134dd1a32d5b395aa4b4ca8
+        x-checker-data:
+          type: anitya
+          project-id: 3715
+          stable-only: true
+          url-template: https://github.com/protocolbuffers/protobuf/releases/download/v$version/protobuf-$version.tar.gz
+    cleanup:
+      - /bin
+  - name: opentelemetry-inspect
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/node24/bin:/usr/lib/sdk/rust-stable/bin
+      env:
+        CARGO_HOME: /run/build/opentelemetry-inspect/cargo
+        TAURI_SKIP_DEVPACKAGE_CHECK: "true"
+    build-commands:
+      # Build app.
+      - cd app && npm install --offline
+      - cd app && cargo --offline fetch --manifest-path src-tauri/Cargo.toml
+      - cd app && npm run tauri build -- --no-bundle
+      
+      # Install binary
+      - install -Dm755 app/src-tauri/target/release/opentelemetry-inspect -t /app/bin/
+
+      # Install desktop file, icon, and metainfo
+      - install -Dm644 dist/linux/eu.venfen.opentelemetry-inspect.desktop -t /app/share/applications/
+      - install -Dm644 dist/linux/spyglass.svg /app/share/icons/hicolor/scalable/apps/eu.venfen.opentelemetry-inspect.svg
+      - install -Dm644 dist/linux/eu.venfen.opentelemetry-inspect.metainfo.xml -t /app/share/metainfo/
+    sources:
+      - type: dir
+        path: ../..
+      - node-sources.json
+      - cargo-sources.json

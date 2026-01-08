@@ -8,3 +8,5 @@ target/
 .idea/
 node_modules/
 .venv/
+build-dir/
+flatpak-repo/

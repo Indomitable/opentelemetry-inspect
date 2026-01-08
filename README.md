@@ -82,6 +82,22 @@ xattr -d com.apple.quarantine /Applications/opentelemetry-inspect.app
 
 ---
 
+### Prepare flatpak
+
+Generate flatpak sources.json files by using flatpak-build-tools:
+
+```bash
+cd flatpak-builder-tools/node
+uv run flatpak-node-generator -o "$PROJECT_ROOT/dist/linux/node-sources.json" npm "$PROJECT_ROOT/app/package-lock.json"
+cd flatpak-builder-tools/cargo
+uv run flatpak-cargo-generator.py -o "$PROJECT_ROOT/dist/linux/cargo-sources.json" "$PROJECT_ROOT/app/src-tauri/Cargo.lock"
+```
+
+Then build the flatpak file.
+```bash
+./scripts/build-flatpak.sh
+```
+
 ## License
 
 GPL-3.0 License. See [LICENSE](LICENSE) for details.

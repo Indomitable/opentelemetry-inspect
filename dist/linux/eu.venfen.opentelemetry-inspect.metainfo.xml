@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>eu.venfen.opentelemetry-inspect</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-only</project_license>
+  <name>OpenTelemetry Inspector</name>
+  <summary>Explore and debug OpenTelemetry logs, traces, and metrics</summary>
+
+  <description>
+    <p>
+      OpenTelemetry Inspector is a developer tool designed to capture,
+      visualize, and debug OpenTelemetry data. It acts as a local OTLP receiver
+      capable of handling logs, spans, and metrics.
+    </p>
+    <p>
+      Whether you are instrumenting a new microservice or troubleshooting 
+      distributed transactions, this tool provides a clear and immediate 
+      interface for your telemetry data.
+    </p>
+    <ul>
+      <li>Monitor incoming HTTP (4318) and gRPC (4317) OTLP traffic.</li>
+      <li>Search and filter logs with structured data support.</li>
+      <li>Visualize distributed traces and span hierarchies.</li>
+      <li>Inspect metrics in real-time with automatic chart updates.</li>
+    </ul>
+    <p>
+      Perfect for local development where you need a quick way to verify that your
+      instrumentation is working correctly without setting up a full observability stack 
+      like Prometheus, Jaeger, or Loki.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">eu.venfen.opentelemetry-inspect.desktop</launchable>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>The main dashboard providing a summary of captured telemetry.</caption>
+      <image>https://raw.githubusercontent.com/indomitable/opentelemetry-inspect/main/screenshots/summary.png</image>
+    </screenshot>
+  </screenshots>
+
+  <url type="homepage">https://github.com/indomitable/opentelemetry-inspect</url>
+  <url type="bugtracker">https://github.com/indomitable/opentelemetry-inspect/issues</url>
+  <url type="vcs-browser">https://github.com/indomitable/opentelemetry-inspect</url>
+
+  <content_rating type="oars-1.1" />
+
+  <releases>
+    <release version="1.0.3" date="2026-01-08" />
+  </releases>
+
+  <provides>
+    <binary>opentelemetry-inspect</binary>
+  </provides>
+</component>

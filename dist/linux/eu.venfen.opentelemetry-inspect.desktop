@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=OpenTelemetry Inspector
+Comment=View Logs, Traces and Metrics
+Exec=opentelemetry-inspect
+Icon=eu.venfen.opentelemetry-inspect
+Terminal=false
+Categories=Development;Debugger;
+Keywords=OpenTelemetry;OTel;Tracing;Logging;Metrics;
+StartupWMClass=opentelemetry-inspect
