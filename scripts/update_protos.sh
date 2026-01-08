@@ -4,8 +4,8 @@
 BASE_URL="https://raw.githubusercontent.com/open-telemetry/opentelemetry-proto/refs/heads/main/opentelemetry/proto"
 
 # Local target directory relative to this script's location
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TARGET_BASE_DIR="$SCRIPT_DIR/opentelemetry/proto"
+ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
+TARGET_BASE_DIR="$ROOT_DIR/app/src-tauri/opentelemetry/proto"
 
 # List of proto files to download
 PROTOS=(
