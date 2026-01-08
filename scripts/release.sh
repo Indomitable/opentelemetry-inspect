@@ -59,20 +59,20 @@ else
 fi
 
 # Update metainfo.xml
-METAINFO_FILE="$ROOT_DIR/dist/linux/eu.venfen.opentelemetry-inspect.metainfo.xml"
+METAINFO_FILE="$ROOT_DIR/dist/linux/com.github.indomitable.opentelemetry-inspect.metainfo.xml"
 if [[ -f "$METAINFO_FILE" ]]; then
     RELEASE_DATE=$(date +%Y-%m-%d)
     # Insert new release after <releases> tag
     sed -i.bak "/<releases>/a \    <release version=\"$VERSION\" date=\"$RELEASE_DATE\" />" "$METAINFO_FILE"
     rm "$METAINFO_FILE.bak"
-    echo "Updated dist/linux/eu.venfen.opentelemetry-inspect.metainfo.xml"
+    echo "Updated dist/linux/com.github.indomitable.opentelemetry-inspect.metainfo.xml"
 else
     echo "Warning: $METAINFO_FILE not found"
 fi
 
 # Git operations
 cd "$ROOT_DIR"
-git add app/package.json app/src-tauri/tauri.conf.json app/src-tauri/Cargo.toml app/src-tauri/Cargo.lock app/src/views/Summary.vue dist/linux/eu.venfen.opentelemetry-inspect.metainfo.xml
+git add app/package.json app/src-tauri/tauri.conf.json app/src-tauri/Cargo.toml app/src-tauri/Cargo.lock app/src/views/Summary.vue dist/linux/com.github.indomitable.opentelemetry-inspect.metainfo.xml
 
 echo "Changes to be committed:"
 git diff --cached

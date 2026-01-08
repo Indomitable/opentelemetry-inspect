@@ -1,4 +1,4 @@
-app-id: eu.venfen.opentelemetry-inspect
+app-id: com.github.indomitable.opentelemetry-inspect
 runtime: org.gnome.Platform
 runtime-version: '49'
 sdk: org.gnome.Sdk
@@ -51,9 +51,9 @@ modules:
       - install -Dm755 app/src-tauri/target/release/opentelemetry-inspect -t /app/bin/
 
       # Install desktop file, icon, and metainfo
-      - install -Dm644 dist/linux/eu.venfen.opentelemetry-inspect.desktop -t /app/share/applications/
-      - install -Dm644 dist/linux/spyglass.svg /app/share/icons/hicolor/scalable/apps/eu.venfen.opentelemetry-inspect.svg
-      - install -Dm644 dist/linux/eu.venfen.opentelemetry-inspect.metainfo.xml -t /app/share/metainfo/
+      - install -Dm644 dist/linux/com.github.indomitable.opentelemetry-inspect.desktop -t /app/share/applications/
+      - install -Dm644 dist/linux/spyglass.svg /app/share/icons/hicolor/scalable/apps/com.github.indomitable.opentelemetry-inspect.svg
+      - install -Dm644 dist/linux/com.github.indomitable.opentelemetry-inspect.metainfo.xml -t /app/share/metainfo/
     sources:
       - type: dir
         path: ../..
