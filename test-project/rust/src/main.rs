@@ -30,6 +30,7 @@ use std::{
 use std::sync::OnceLock;
 use opentelemetry::global::BoxedTracer;
 use opentelemetry::metrics::Counter;
+use opentelemetry::trace::Span;
 use opentelemetry_sdk::logs::SdkLoggerProvider;
 use opentelemetry_sdk::trace::{SdkTracerProvider};
 use tracing::log::info;
@@ -80,9 +81,11 @@ async fn main() {
 
     // Tracing
     let exporter = opentelemetry_otlp::SpanExporter::builder()
-        .with_http()
-        .with_protocol(Protocol::HttpBinary)
-        .with_endpoint("http://localhost:4318/v1/traces")
+        .with_tonic()
+        .with_endpoint("http://localhost:4317/v1/traces")
+        // .with_http()
+        // .with_protocol(Protocol::HttpBinary)
+        // .with_endpoint("http://localhost:4318/v1/traces")
         .build()
         .expect("failed to build trace exporter");
 
@@ -95,9 +98,11 @@ async fn main() {
 
     // Metrics
     let exporter = opentelemetry_otlp::MetricExporter::builder()
-        .with_http()
-        .with_protocol(Protocol::HttpBinary)
-        .with_endpoint("http://localhost:4318/v1/metrics")
+        .with_tonic()
+        .with_endpoint("http://localhost:4317/v1/metrics")
+        // .with_http()
+        // .with_protocol(Protocol::HttpBinary)
+        // .with_endpoint("http://localhost:4318/v1/metrics")
         .build()
         .expect("failed to build metric exporter");
     let metrics_provider = SdkMeterProvider::builder()
@@ -108,9 +113,11 @@ async fn main() {
 
     // Logs
     let logs_exporter = opentelemetry_otlp::LogExporter::builder()
-        .with_http()
-        .with_endpoint("http://localhost:4318/v1/logs")
-        .with_protocol(Protocol::HttpBinary)
+        .with_tonic()
+        .with_endpoint("http://localhost:4317/v1/logs")
+        // .with_http()
+        // .with_endpoint("http://localhost:4318/v1/logs")
+        // .with_protocol(Protocol::HttpBinary)
         .build()
         .expect("failed to build log exporter");
     let logging_provider = SdkLoggerProvider::builder()
@@ -168,7 +175,8 @@ fn log_info(msg: &str) {
 async fn list_todos(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let start = Instant::now();
     let tracer = get_tracer();
-    let _span = tracer.start("ListTodos");
+    let mut _span = tracer.start("ListTodos");
+    _span.set_attribute(KeyValue::new("endpoint", "/todos"));
     
     log_info("Processing GET /todos");
     
