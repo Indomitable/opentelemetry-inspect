@@ -1,6 +1,20 @@
 @baseUrl = http://localhost:5262
 
-GET {{baseUrl}}/weatherforecast/
+GET {{baseUrl}}/todos/
 Accept: application/json
 
+> {% 
+    client.global.set("traceparent", response.headers.valueOf("traceparent"));
+    const id = response.body[0].id;
+    client.global.set("todoId", id);
+%}
+
 ###
+
+GET {{baseUrl}}/todos/{{todoId}}
+traceparent: {{traceparent}}
+
+###
+
+
+GET {{baseUrl}}//test-sequence-of-spans

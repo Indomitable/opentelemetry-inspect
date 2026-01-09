@@ -53,6 +53,10 @@ const closeDetails = () => {
   selectedKey.value = undefined;
 };
 
+const showInspectButton = (span: Span) => {
+  return tracesStore.spans.some(s => s.trace_id === span.trace_id && s.span_id === span.span_id);
+};
+
 </script>
 <template>
   <div class="page">
@@ -90,7 +94,7 @@ const closeDetails = () => {
         <Column field="status.code" header="Status" :style="{ width: '80px' }" />
         <Column style="width: 10rem; padding: 0 0.5rem" >
           <template #body="slotProps">
-            <div v-if="slotProps.node.data.children.length > 0 && !slotProps.node.data.parent_span_id">
+            <div v-if="showInspectButton(slotProps.node.data)">
               <router-link :to="slotProps.node.link" class="link-button">
                 <Button type="button" rounded icon="pi pi-search" severity="secondary" size="small" />
               </router-link>

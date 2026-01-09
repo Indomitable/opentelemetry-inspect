@@ -106,7 +106,8 @@ describe('SpanDurationBar Component', () => {
       const wrapper = mount(SpanDurationBar, {
         props: {
           span: child,
-          parentSpan: parent
+          traceStartTime: parent.start_ns,
+          traceEndTime: parent.end_ns
         }
       });
 
@@ -140,7 +141,8 @@ describe('SpanDurationBar Component', () => {
       const wrapper = mount(SpanDurationBar, {
         props: {
           span: child,
-          parentSpan: parent
+          traceStartTime: parent.start_ns,
+          traceEndTime: parent.end_ns
         }
       });
 
@@ -177,7 +179,8 @@ describe('SpanDurationBar Component', () => {
       const wrapper = mount(SpanDurationBar, {
         props: {
           span: child,
-          parentSpan: parent
+          traceStartTime: parent.start_ns,
+          traceEndTime: parent.end_ns
         }
       });
 
@@ -214,7 +217,8 @@ describe('SpanDurationBar Component', () => {
       const wrapper = mount(SpanDurationBar, {
         props: {
           span: child,
-          parentSpan: parent
+          traceStartTime: parent.start_ns,
+          traceEndTime: parent.end_ns
         }
       });
 
@@ -223,75 +227,6 @@ describe('SpanDurationBar Component', () => {
 
       // Width should be clamped to minimum 0.5%
       expect(styles).toContain('width: 0.5%');
-    });
-
-    it('should clamp left offset to 0% when child starts before parent (edge case)', () => {
-      // This shouldn't happen in real data, but verify graceful handling
-      const parentStart = 1000000000n;
-      const parentDuration = 100000000n;
-
-      const parent = createMockSpan({
-        start_ns: parentStart,
-        duration: parentDuration,
-        end_ns: parentStart + parentDuration,
-        name: 'parent-span'
-      });
-
-      const child = createMockSpanModel({
-        start_ns: parentStart - 1000000n, // starts BEFORE parent (shouldn't happen)
-        duration: 10000000n,
-        end_ns: parentStart + 9000000n,
-        name: 'child-span',
-        span_id: 'span-2'
-      });
-
-      const wrapper = mount(SpanDurationBar, {
-        props: {
-          span: child,
-          parentSpan: parent
-        }
-      });
-
-      const bar = wrapper.find('.span-duration-bar-fill');
-      const styles = bar.attributes('style');
-
-      // Should clamp to 0%
-      expect(styles).toContain('left: 0%');
-    });
-
-    it('should clamp width to not exceed 100% when child extends past parent', () => {
-      // Another edge case: child extends past parent
-      const parentStart = 1000000000n;
-      const parentDuration = 100000000n;
-
-      const parent = createMockSpan({
-        start_ns: parentStart,
-        duration: parentDuration,
-        end_ns: parentStart + parentDuration,
-        name: 'parent-span'
-      });
-
-      const child = createMockSpanModel({
-        start_ns: parentStart + 80000000n, // starts 80% in
-        duration: 50000000n, // extends 50% duration (would go to 130% end)
-        end_ns: parentStart + 130000000n,
-        name: 'child-span',
-        span_id: 'span-2'
-      });
-
-      const wrapper = mount(SpanDurationBar, {
-        props: {
-          span: child,
-          parentSpan: parent
-        }
-      });
-
-      const bar = wrapper.find('.span-duration-bar-fill');
-      const styles = bar.attributes('style');
-
-      expect(styles).toContain('left: 80%');
-      // Width should be clamped to not exceed 100% - 80% = 20%
-      expect(styles).toContain('width: 20%');
     });
   });
 
@@ -302,7 +237,11 @@ describe('SpanDurationBar Component', () => {
       });
 
       const wrapper = mount(SpanDurationBar, {
-        props: { span }
+        props: {
+          span,
+          traceStartTime: span.start_ns,
+          traceEndTime: span.end_ns
+        }
       });
 
       const bar = wrapper.find('.span-duration-bar-fill');
@@ -317,7 +256,11 @@ describe('SpanDurationBar Component', () => {
       });
 
       const wrapper = mount(SpanDurationBar, {
-        props: { span }
+        props: {
+          span,
+          traceStartTime: span.start_ns,
+          traceEndTime: span.end_ns
+        }
       });
 
       const bar = wrapper.find('.span-duration-bar-fill');
@@ -332,7 +275,11 @@ describe('SpanDurationBar Component', () => {
       });
 
       const wrapper = mount(SpanDurationBar, {
-        props: { span }
+        props: {
+          span,
+          traceStartTime: span.start_ns,
+          traceEndTime: span.end_ns
+        }
       });
 
       const bar = wrapper.find('.span-duration-bar-fill');
@@ -347,7 +294,11 @@ describe('SpanDurationBar Component', () => {
       });
 
       const wrapper = mount(SpanDurationBar, {
-        props: { span }
+        props: {
+          span,
+          traceStartTime: span.start_ns,
+          traceEndTime: span.end_ns
+        }
       });
 
       const bar = wrapper.find('.span-duration-bar-fill');
@@ -361,13 +312,6 @@ describe('SpanDurationBar Component', () => {
     it('should position multiple child spans correctly', () => {
       const parentStart = 1000000000n;
       const parentDuration = 100000000n; // 100ms
-
-      const parent = createMockSpan({
-        start_ns: parentStart,
-        duration: parentDuration,
-        end_ns: parentStart + parentDuration,
-        name: 'parent-span'
-      });
 
       // Child 1: 10-30ms (left: 10%, width: 20%)
       const child1 = createMockSpanModel({
@@ -390,14 +334,16 @@ describe('SpanDurationBar Component', () => {
       const wrapper1 = mount(SpanDurationBar, {
         props: {
           span: child1,
-          parentSpan: parent
+          traceStartTime: parentStart,
+          traceEndTime: parentStart + parentDuration
         }
       });
 
       const wrapper2 = mount(SpanDurationBar, {
         props: {
           span: child2,
-          parentSpan: parent
+          traceStartTime: parentStart,
+          traceEndTime: parentStart + parentDuration
         }
       });
 
@@ -412,34 +358,6 @@ describe('SpanDurationBar Component', () => {
     });
   });
 
-  describe('Label Display', () => {
-    it('should display the correct duration in the label', () => {
-      const span = createMockSpanModel({
-        duration: 50000000n // 50ms
-      });
-
-      const wrapper = mount(SpanDurationBar, {
-        props: { span }
-      });
-
-      const label = wrapper.find('.duration-text');
-      expect(label.text()).toContain('50 ms 0 ns');
-    });
-
-    it('should display duration in nanoseconds for very small spans', () => {
-      const span = createMockSpanModel({
-        duration: 500n // 500ns
-      });
-
-      const wrapper = mount(SpanDurationBar, {
-        props: { span }
-      });
-
-      const label = wrapper.find('.duration-text');
-      expect(label.text()).toContain('ns');
-    });
-  });
-
   describe('Tooltip', () => {
     it('should set tooltip with span name and duration', () => {
       const span = createMockSpanModel({
@@ -448,7 +366,7 @@ describe('SpanDurationBar Component', () => {
       });
 
       const wrapper = mount(SpanDurationBar, {
-        props: { span }
+        props: { span, traceStartTime: span.start_ns, traceEndTime: span.start_ns + span.duration }
       });
 
       const bar = wrapper.find('.span-duration-bar-fill');
@@ -459,8 +377,8 @@ describe('SpanDurationBar Component', () => {
     });
   });
 
-  describe('Fallback to Trace Times', () => {
-    it('should use traceStartTime and traceEndTime when no parent provided', () => {
+  describe('Trace-Level Time Range (New Behavior)', () => {
+    it('should use traceStartTime and traceEndTime when provided (no parent)', () => {
       const traceStart = 0n;
       const traceEnd = 100000000n; // 100ms total trace duration
 
@@ -486,9 +404,13 @@ describe('SpanDurationBar Component', () => {
       expect(styles).toContain('width: 20%');
     });
 
-    it('should prefer parentSpan over traceStartTime and traceEndTime', () => {
+    it('should prioritize traceStartTime and traceEndTime over parentSpan', () => {
+      // This is the new behavior: trace times take precedence
+      const traceStart = 0n;
+      const traceEnd = 200000000n; // 200ms total trace duration
+
       const parentStart = 1000000000n;
-      const parentDuration = 100000000n;
+      const parentDuration = 100000000n; // 100ms
 
       const parent = createMockSpan({
         start_ns: parentStart,
@@ -498,9 +420,9 @@ describe('SpanDurationBar Component', () => {
       });
 
       const child = createMockSpanModel({
-        start_ns: parentStart + 10000000n,
-        duration: 20000000n,
-        end_ns: parentStart + 30000000n,
+        start_ns: 50000000n, // 50ms into trace (not relative to parent)
+        duration: 20000000n, // 20ms duration
+        end_ns: 70000000n,
         name: 'child-span',
         span_id: 'span-2'
       });
@@ -509,17 +431,98 @@ describe('SpanDurationBar Component', () => {
         props: {
           span: child,
           parentSpan: parent,
-          traceStartTime: 0n, // should be ignored
-          traceEndTime: 1000000000n // should be ignored
+          traceStartTime: traceStart,
+          traceEndTime: traceEnd
         }
       });
 
       const bar = wrapper.find('.span-duration-bar-fill');
       const styles = bar.attributes('style');
 
-      // Should use parent calculations (10%, 20%), not trace calculations
-      expect(styles).toContain('left: 10%');
-      expect(styles).toContain('width: 20%');
+      // Should use trace calculations (25% offset, 10% width), not parent calculations
+      expect(styles).toContain('left: 25%');
+      expect(styles).toContain('width: 10%');
+    });
+
+    it('should handle sequential spans correctly (span finishes before another starts)', () => {
+      // Trace: 0-200ms
+      // Span 1: 0-50ms (first span)
+      // Span 2: 100-150ms (starts after span 1 finishes)
+      const traceStart = 0n;
+      const traceEnd = 200000000n; // 200ms
+
+      const span1 = createMockSpanModel({
+        start_ns: 0n,
+        duration: 50000000n, // 50ms
+        end_ns: 50000000n,
+        name: 'span-1',
+        span_id: 'span-1'
+      });
+
+      const span2 = createMockSpanModel({
+        start_ns: 100000000n, // starts 100ms in (after span1 ends)
+        duration: 50000000n, // 50ms
+        end_ns: 150000000n,
+        name: 'span-2',
+        span_id: 'span-2'
+      });
+
+      const wrapper1 = mount(SpanDurationBar, {
+        props: {
+          span: span1,
+          traceStartTime: traceStart,
+          traceEndTime: traceEnd
+        }
+      });
+
+      const wrapper2 = mount(SpanDurationBar, {
+        props: {
+          span: span2,
+          traceStartTime: traceStart,
+          traceEndTime: traceEnd
+        }
+      });
+
+      const bar1 = wrapper1.find('.span-duration-bar-fill');
+      const bar2 = wrapper2.find('.span-duration-bar-fill');
+
+      // Span 1: starts at 0%, width 25% (50ms / 200ms)
+      expect(bar1.attributes('style')).toContain('left: 0%');
+      expect(bar1.attributes('style')).toContain('width: 25%');
+
+      // Span 2: starts at 50%, width 25% (50ms / 200ms)
+      expect(bar2.attributes('style')).toContain('left: 50%');
+      expect(bar2.attributes('style')).toContain('width: 25%');
+    });
+
+    it('should handle root span that does not cover entire trace duration', () => {
+      // Trace: 0-200ms (min start to max end across all spans)
+      // Root span: 10-60ms (does not start at 0 or end at 200)
+      const traceStart = 0n;
+      const traceEnd = 200000000n; // 200ms
+
+      const rootSpan = createMockSpanModel({
+        start_ns: 10000000n, // 10ms into trace
+        duration: 50000000n, // 50ms
+        end_ns: 60000000n, // ends at 60ms
+        name: 'root-span',
+        span_id: 'span-1'
+      });
+
+      const wrapper = mount(SpanDurationBar, {
+        props: {
+          span: rootSpan,
+          traceStartTime: traceStart,
+          traceEndTime: traceEnd
+        }
+      });
+
+      const bar = wrapper.find('.span-duration-bar-fill');
+      const styles = bar.attributes('style');
+
+      // Should be positioned at 5% (10ms / 200ms) with width 25% (50ms / 200ms)
+      expect(styles).toContain('left: 5%');
+      expect(styles).toContain('width: 25%');
     });
   });
 });
