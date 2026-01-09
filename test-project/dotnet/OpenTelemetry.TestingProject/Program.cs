@@ -1,11 +1,13 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using System.Threading.Channels;
 using Microsoft.AspNetCore.Http.Features;
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Resources;
 using Microsoft.AspNetCore.Mvc;
 using OpenTelemetry.Context.Propagation;
+using OpenTelemetry.TestingProject;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,6 +33,8 @@ builder.Services.AddOpenTelemetry()
 
 builder.Services.AddSingleton<ActivitySource>(_ => new ActivitySource(serviceName));
 builder.Services.AddSingleton<Meter>(_ => new Meter(serviceName));
+builder.Services.AddSingleton(Channel.CreateUnbounded<ChannelData>());
+builder.Services.AddHostedService<Worker>();
 
 var app = builder.Build();
 
@@ -157,13 +161,13 @@ app.MapDelete("/todos/{id}", (string id, ActivitySource activitySource, Meter me
     return Results.NoContent();
 });
 
-app.MapGet("/test-sequence-of-spans", async (ActivitySource activitySource) =>
+app.MapGet("/test-sequence-of-spans", async (ActivitySource activitySource, Channel<ChannelData> channel) =>
 {
     var activity0 = activitySource.StartActivity("First", ActivityKind.Server);
     var activity1 = activitySource.StartActivity("Second", ActivityKind.Producer);
 
     var pg = new PropagationContext(activity0!.Context, Baggage.Current);
-    var container = new Dictionary<string, object>();
+    var container = new Dictionary<string, string>();
     Propagators.DefaultTextMapPropagator.Inject(pg,  container, static (dic, k, v) => dic[k] = v);
     await Task.Delay(TimeSpan.FromMilliseconds(10));
     activity1.Dispose();
@@ -171,15 +175,7 @@ app.MapGet("/test-sequence-of-spans", async (ActivitySource activitySource) =>
     activity0.Dispose();
     
     
-    var extract = Propagators.DefaultTextMapPropagator.Extract(default, container, static (dic, k) =>
-    {
-        if (dic.TryGetValue(k, out var value))
-        {
-            return [(string)value];
-        }
-
-        return [];
-    });
+    var extract = Propagators.DefaultTextMapPropagator.Extract(default, container, static (dic, k) => dic.TryGetValue(k, out var value) ? [value] : []);
     await Task.Delay(TimeSpan.FromMilliseconds(5));
     using var activity2 = activitySource.StartActivity("Third", ActivityKind.Consumer, extract.ActivityContext);
     await Task.Delay(TimeSpan.FromMilliseconds(10));
@@ -189,6 +185,8 @@ app.MapGet("/test-sequence-of-spans", async (ActivitySource activitySource) =>
     using var client = new HttpClient();
     client.BaseAddress = new Uri("http://localhost:5262");
     await client.GetAsync("/todos");
+    
+    await channel.Writer.WriteAsync(new ChannelData(container));
 });
 
 // app.Use(async (HttpContext context, Func<Task> next) =>
