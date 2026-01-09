@@ -41,7 +41,7 @@ If you download the `.dmg` from the releases, macOS will likely block it because
 
 ```bash
 # After moving the app to your Applications folder
-xattr -d com.apple.quarantine /Applications/opentelemetry-inspect.app
+xattr -d com.apple.quarantine /Applications/OpenTelemetry.Inspector.app
 ```
 
 ---

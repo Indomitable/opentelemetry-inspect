@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
-import {computed, ComputedRef, ref} from 'vue';
+import {computed, ComputedRef, ref, watch} from 'vue';
 import type { TreeTableExpandedKeys, TreeTableSelectionKeys } from 'primevue/treetable';
 import type { TreeNode } from 'primevue/treenode';
+import ToggleSwitch from 'primevue/toggleswitch';
 import { useTracesStore } from '../state/traces-store';
 import { durationToString, Span } from '../domain/traces';
 import SpanDurationBar from '../components/span-duration-bar.vue';
@@ -10,21 +11,64 @@ import {useLogsStore} from "../state/logs-store.ts";
 import {Log} from "../domain/logs.ts";
 import SpanDetailsView from "../components/span-details-view.vue";
 import LogsDetailsView from "../components/logs-details-view.vue";
+import {sortBigIntAsc} from "../helpers/bigint-helpers.ts";
 
 const route = useRoute();
 const tracesStore = useTracesStore();
 const logsStore = useLogsStore();
 const traceId = route.params.traceId as string;
 const selectedKey = ref<TreeTableSelectionKeys | undefined>(undefined);
+const showLogs = ref<boolean>(false); // Default: logs hidden
 
 const spansForTrace = computed(() => {
-  return Object.values(tracesStore.index).filter(s => s.trace_id === traceId);
+  return Object.values(tracesStore.index).filter(s => s.trace_id === traceId).sort((a, b) => sortBigIntAsc(a.start_ns, b.start_ns));
 });
 const logsForTrace = computed(() => {
-  return logsStore.logs.filter(l => l.trace_id === traceId);
+  if (!showLogs.value) return [];
+  return logsStore.logs.filter(l => l.trace_id === traceId).sort((a, b) => sortBigIntAsc(a.time_ns, b.time_ns));
 });
 
-const rootSpan = computed(() => spansForTrace.value.find(s => !s.parent_span_id) || null);
+// Find all root spans: spans without parent_span_id OR orphaned spans (parent exists but is not reported)
+const rootSpans = computed(() => {
+  return spansForTrace.value.filter(span => {
+    // True root: no parent_span_id
+    if (!span.parent_span_id) {
+      return true;
+    }
+    // Orphaned span: has parent_span_id but parent is missing from index
+    const parentKey = `${span.trace_id}-${span.parent_span_id}`;
+    return !tracesStore.index[parentKey];
+  }).sort((a, b) => sortBigIntAsc(a.start_ns, b.start_ns));
+});
+
+// Calculate trace-wide min start and max end times across all spans and (optionally) logs
+const traceTimeRange = computed(() => {
+  let minStart = spansForTrace.value[spansForTrace.value.length - 1].end_ns;
+  let maxEnd = 0n;
+
+  // Check all spans
+  for (const span of spansForTrace.value) {
+    if (span.start_ns < minStart) {
+      minStart = span.start_ns;
+    }
+    if (span.end_ns > maxEnd) {
+      maxEnd = span.end_ns;
+    }
+  }
+
+  // Check all logs
+  for (const log of logsForTrace.value) {
+    if (log.time_ns < minStart) {
+      minStart = log.time_ns;
+    }
+    const logEnd = log.time_ns + 1n;
+    if (logEnd > maxEnd) {
+      maxEnd = logEnd;
+    }
+  }
+
+  return { start: minStart, end: maxEnd };
+});
 
 function spanToNode(spanOrLog: Span|Log): TreeNode {
   if ('children' in spanOrLog) {
@@ -68,22 +112,29 @@ function spanToNode(spanOrLog: Span|Log): TreeNode {
   }
 }
 
-function getParentSpan(span: Span): Span | undefined {
-  if (!span.parent_span_id) return undefined;
-  const parentKey = `${span.trace_id}-${span.parent_span_id}`;
-  return tracesStore.index[parentKey];
-}
-
 const treeNodes = computed(() => {
-  if (!rootSpan.value) return [];
-  return [spanToNode(rootSpan.value)];
+  if (rootSpans.value.length === 0) return [];
+  return rootSpans.value.map(span => spanToNode(span));
 });
 
-// Expand all nodes by default
-const expandedKeys: TreeTableExpandedKeys = spansForTrace.value.map(spanToNode).reduce((acc, node) => {
+// Helper function to collect all keys from a tree node recursively
+function collectNodeKeys(node: TreeNode, acc: Record<string, boolean>) {
   acc[node.key as string] = true;
-  return acc;
-}, {} as TreeTableExpandedKeys);
+  if (node.children) {
+    for (const child of node.children) {
+      collectNodeKeys(child, acc);
+    }
+  }
+}
+
+// Expand all nodes by default (reactive)
+const expandedKeys = computed<TreeTableExpandedKeys>(() => {
+  const keys: Record<string, boolean> = {};
+  for (const rootNode of treeNodes.value) {
+    collectNodeKeys(rootNode, keys);
+  }
+  return keys;
+});
 
 type SelectedItem = (Span & { type: 'span' }) | (Log & { type: 'log' }) | undefined;
 const selectedItem: ComputedRef<SelectedItem> = computed(() => {
@@ -111,13 +162,29 @@ const closeDetails = () => {
   selectedKey.value = undefined;
 };
 
+// Clear log selection when logs are hidden
+watch(showLogs, (newValue) => {
+  if (!newValue && selectedKey.value) {
+    const keys = Object.keys(selectedKey.value);
+    if (keys.length > 0 && keys[0].startsWith('log')) {
+      selectedKey.value = undefined;
+    }
+  }
+});
+
 </script>
 
 <template>
   <div class="page">
     <div class="page__container" :class="{ 'page__container--with-details': selectedItem }">
       <div class="page__header-row">
-        <h1>Trace: {{ route.params.traceId }}</h1>
+        <h1>Trace: {{ route.params.traceId }} (Duration: {{ durationToString(traceTimeRange.end - traceTimeRange.start) }})</h1>
+        <div class="page__header-controls">
+          <label for="show-logs-toggle" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <ToggleSwitch id="show-logs-toggle" v-model="showLogs" />
+            <span>Show Logs</span>
+          </label>
+        </div>
       </div>
       <TreeTable
           :value="treeNodes"
@@ -142,7 +209,8 @@ const closeDetails = () => {
           <template #body="slotProps">
             <SpanDurationBar
               :span="slotProps.node.data"
-              :parent-span="getParentSpan(slotProps.node.data)"
+              :trace-start-time="traceTimeRange.start"
+              :trace-end-time="traceTimeRange.end"
             />
           </template>
         </Column>

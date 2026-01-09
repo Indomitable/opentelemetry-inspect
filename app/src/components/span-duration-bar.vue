@@ -1,54 +1,26 @@
 <script setup lang="ts">
-import type { Span } from '../domain/traces';
 import { durationToString } from '../domain/traces';
 import {TraceDetailsViewModels} from "../viewmodels/trace-details-models.ts";
 import {getSeverityType} from "../domain/logs-exensions.ts";
 
 interface Props {
   span: TraceDetailsViewModels.SpanOrLogModel;
-  parentSpan?: Span;
-  traceStartTime?: bigint;
-  traceEndTime?: bigint;
+  traceStartTime: bigint;
+  traceEndTime: bigint;
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  parentSpan: undefined,
-  traceStartTime: undefined,
-  traceEndTime: undefined
-});
+const props = defineProps<Props>()
 
 // Calculate relative position and width as percentages
 const spanStart = props.span.start_ns;
 const spanEnd = props.span.end_ns;
-const spanDuration = props.span.duration;
+const traceDuration = (props.traceEndTime - props.traceStartTime);
 
-// Use parent times if provided (show span relative to parent)
-// Otherwise use trace times, or span times as fallback
-let referenceStart: bigint;
-let referenceDuration: bigint;
-
-if (props.parentSpan) {
-  referenceStart = props.parentSpan.start_ns;
-  referenceDuration = props.parentSpan.duration;
-} else {
-  const traceStart = props.traceStartTime ?? spanStart;
-  const traceEnd = props.traceEndTime ?? spanEnd;
-  referenceStart = traceStart;
-  referenceDuration = traceEnd - traceStart;
-}
-
-const safeReferenceDuration = referenceDuration > 0n ? referenceDuration : 1n;
-
-const offsetPercent = referenceDuration > 0n
-  ? Number((spanStart - referenceStart) * 100n / safeReferenceDuration)
+const leftOffset = traceDuration > 0n
+  ? Number((spanStart - props.traceStartTime) * 100n / traceDuration)
   : 0;
 
-const widthPercent = referenceDuration > 0n
-  ? Number(spanDuration * 100n / safeReferenceDuration)
-  : 0;
-
-const leftOffset = Math.max(0, Math.min(100, offsetPercent));
-const barWidth = Math.max(0.5, Math.min(100 - leftOffset, widthPercent));
+const barWidth = Math.min(100, Math.max(0.5, Number((spanEnd - spanStart) * 100n / traceDuration))); // min 0.5% max 100%
 
 const getSpanDurationClass = (duration: bigint) => {
   if (duration < 1000000n) return 'duration-fast'; // less than 1ms
@@ -79,9 +51,6 @@ const getSpanDurationClass = (duration: bigint) => {
           }"
           :title="`${span.severity}: ${span.name}`"
       />
-    </div>
-    <div class="span-duration-bar-label">
-      <span class="duration-text" v-if="span.type === 'span'">{{ durationToString(spanDuration) }}</span>
     </div>
   </div>
 </template>

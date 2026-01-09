@@ -38,8 +38,9 @@ const metricsStore = useMetricsStore();
 </template>
 
 <style scoped>
-.summary-container {
-  padding-top: 5px;
+.summary-container>header-row>h1 {
+  height: 40px;
+  line-height: 40px;
 }
 
 .header-row {

@@ -1,18 +1,17 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using Microsoft.AspNetCore.Http.Features;
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Resources;
 using Microsoft.AspNetCore.Mvc;
+using OpenTelemetry.Context.Propagation;
 
 var builder = WebApplication.CreateBuilder(args);
 
 const string serviceName = "dotnet-todo-service";
 
 builder.Services.AddOpenApi();
-
-var otlpAddress = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT");
-var protocol = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_PROTOCOL");
 
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(rb =>
@@ -28,7 +27,7 @@ builder.Services.AddOpenTelemetry()
     {
         mb.AddMeter(serviceName);
     })
-    .UseOtlpExporter(string.IsNullOrEmpty(protocol) || protocol == "grpc" ? OtlpExportProtocol.Grpc : OtlpExportProtocol.HttpProtobuf, new Uri(otlpAddress ?? "http://127.0.0.1:4318"));
+    .UseOtlpExporter();
 
 builder.Services.AddSingleton<ActivitySource>(_ => new ActivitySource(serviceName));
 builder.Services.AddSingleton<Meter>(_ => new Meter(serviceName));
@@ -157,6 +156,53 @@ app.MapDelete("/todos/{id}", (string id, ActivitySource activitySource, Meter me
     logger.LogInformation("Finished DELETE /todos/{id}", id);
     return Results.NoContent();
 });
+
+app.MapGet("/test-sequence-of-spans", async (ActivitySource activitySource) =>
+{
+    var activity0 = activitySource.StartActivity("First", ActivityKind.Server);
+    var activity1 = activitySource.StartActivity("Second", ActivityKind.Producer);
+
+    var pg = new PropagationContext(activity0!.Context, Baggage.Current);
+    var container = new Dictionary<string, object>();
+    Propagators.DefaultTextMapPropagator.Inject(pg,  container, static (dic, k, v) => dic[k] = v);
+    await Task.Delay(TimeSpan.FromMilliseconds(10));
+    activity1.Dispose();
+    await Task.Delay(TimeSpan.FromMilliseconds(15));
+    activity0.Dispose();
+    
+    
+    var extract = Propagators.DefaultTextMapPropagator.Extract(default, container, static (dic, k) =>
+    {
+        if (dic.TryGetValue(k, out var value))
+        {
+            return [(string)value];
+        }
+
+        return [];
+    });
+    await Task.Delay(TimeSpan.FromMilliseconds(5));
+    using var activity2 = activitySource.StartActivity("Third", ActivityKind.Consumer, extract.ActivityContext);
+    await Task.Delay(TimeSpan.FromMilliseconds(10));
+    using var activity3 = activitySource.StartActivity("Fourth");
+    await Task.Delay(TimeSpan.FromMilliseconds(20));
+
+    using var client = new HttpClient();
+    client.BaseAddress = new Uri("http://localhost:5262");
+    await client.GetAsync("/todos");
+});
+
+// app.Use(async (HttpContext context, Func<Task> next) =>
+// {
+//     //var feature = context.Features.Get<IHttpActivityFeature>();
+//     var activity = Activity.Current;
+//     if (activity is not null)
+//     {
+//         var pc = new PropagationContext(activity.Context,  Baggage.Create(new Dictionary<string, string>(activity.Baggage!)));
+//         Propagators.DefaultTextMapPropagator.Inject(pc, context.Response.Headers, static (headers, k, v) => headers[k] = v);
+//     }
+//
+//     await next();
+// });
 
 app.Run();
 
