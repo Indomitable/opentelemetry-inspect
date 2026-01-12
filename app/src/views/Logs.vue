@@ -1,27 +1,22 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, provide } from 'vue';
 import {useLogsStore} from "../state/logs-store.ts";
 import {Log} from "../domain/logs.ts";
 import ResourceSelector from "../components/resource-selector.vue";
 import {getSeverityType} from "../domain/logs-exensions.ts";
 import LogsDetailsView from "../components/logs-details-view.vue";
-import {Resource} from "../domain/resources.ts";
+import FilterBadge from "../components/filter-badge.vue";
+import {FilterService, filterServiceInjectionKey} from "../services/filter-service.ts";
+
+const filterService = new FilterService();
+provide(filterServiceInjectionKey, filterService);
 
 const logsStore = useLogsStore();
 
 const selectedLog = ref<Log | null>(null);
-const selectedResource = ref<Resource|null>(null);
-
-const filterLogs = (resource: Resource|null) => {
-  selectedResource.value = resource;
-};
 
 const filteredLogs = computed(() => {
-  if (selectedResource.value) {
-    return logsStore.logsByResource(selectedResource.value);
-  }
-
-  return logsStore.logs;
+  return logsStore.logs.filter(log => filterService.matchesFilter(log));
 });
 
 const closeDetails = () => {
@@ -36,11 +31,13 @@ const closeDetails = () => {
       <div class="page__header-row">
         <h1>Logs</h1>
         <div class="page__filters">
-          <resource-selector @update:model-value="filterLogs" />
+          <resource-selector />
         </div>
       </div>
       
-      <DataTable 
+      <filter-badge />
+
+      <DataTable
         v-model:selection="selectedLog" 
         :value="filteredLogs" 
         selectionMode="single"

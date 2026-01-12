@@ -1,16 +1,30 @@
 <script setup lang="ts">
-import {computed, ref} from "vue";
+import {computed, inject} from "vue";
 import {useResourceStore} from "../state/resource-store.ts";
-import {Resource} from "../domain/resources.ts";
+import {filterServiceInjectionKey} from "../services/filter-service.ts";
+const filterService = inject(filterServiceInjectionKey)!;
 
-const ALL_RESOURCES_KEY='-';
-const emits = defineEmits<{
-  (e: 'update:model-value', value: Resource|null): void
-}>();
+const ALL_RESOURCES_KEY = '-';
 
-const selectedResourceKey = ref<string>(ALL_RESOURCES_KEY);
-emits('update:model-value', null);
 const resourceStore = useResourceStore();
+
+const selectedResourceKey = computed({
+  get: () => {
+    if (!filterService.hasFilter('resource.key')) {
+      return ALL_RESOURCES_KEY;
+    }
+    return filterService.selectedResourceForDropdown?.key;
+  },
+  set: (newKey: string) => {
+    if (newKey === ALL_RESOURCES_KEY) {
+      filterService.filterByResource(null);
+    } else {
+      const resource = resourceStore.resources.find(r => r.key === newKey);
+      filterService.filterByResource(resource ?? null);
+    }
+  }
+});
+
 const instanceOptions = computed(() => {
   const options = resourceStore.resources.map(r => ({
     label: `${r.service_name} (${r.service_version})`,
@@ -18,16 +32,6 @@ const instanceOptions = computed(() => {
   }));
   return [{ label: 'All Resources', value: ALL_RESOURCES_KEY }, ...options];
 });
-
-const onModelValueUpdate = (resourceKey: string) => {
-  if (resourceKey === ALL_RESOURCES_KEY) {
-    emits('update:model-value', null);
-  } else {
-    const resource = resourceStore.resources.find(r => r.key === resourceKey);
-    emits('update:model-value', resource ?? null);
-  }
-};
-
 </script>
 
 <template>
@@ -36,7 +40,6 @@ const onModelValueUpdate = (resourceKey: string) => {
       id="instance-filter"
       v-model="selectedResourceKey"
       :options="instanceOptions"
-      @update:model-value="onModelValueUpdate"
       option-label="label"
       option-value="value"
       placeholder="Select Resource"
@@ -47,3 +50,4 @@ const onModelValueUpdate = (resourceKey: string) => {
 <style scoped>
 
 </style>
+

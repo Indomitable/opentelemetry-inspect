@@ -115,6 +115,11 @@
     white-space: nowrap;
 }
 
+.details-row div:not(:first-child):not(:last-child) {
+    flex: 1 1 0;
+    white-space: pre;
+}
+
 .details-row div:last-child {
     flex: 1 1 0;
     white-space: pre;
@@ -125,4 +130,9 @@
         border-right-color: #333;
         background: #252525;
     }
+}
+
+.details-filter-col {
+    width: 32px;
+    flex-shrink: 0;
 }

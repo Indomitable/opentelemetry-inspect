@@ -3,24 +3,20 @@ import type {TreeTableSelectionKeys} from "primevue/treetable";
 import ResourceSelector from "../components/resource-selector.vue";
 import {useTracesStore} from "../state/traces-store.ts";
 import {durationToString, Span} from "../domain/traces.ts";
-import {computed, ref} from "vue";
+import {computed, provide, ref} from "vue";
 import type {TreeNode} from "primevue/treenode";
 import SpanDetailsView from "../components/span-details-view.vue";
-import {Resource} from "../domain/resources.ts";
+import FilterBadge from "../components/filter-badge.vue";
+import {FilterService, filterServiceInjectionKey} from "../services/filter-service.ts";
 
 const tracesStore = useTracesStore();
-const selectedResource = ref<Resource|null>(null);
 const selectedKey = ref<TreeTableSelectionKeys | undefined>(undefined);
 
-const filterSpans = (resource: Resource|null) => {
-  selectedResource.value = resource;
-};
+const filterService = new FilterService();
+provide(filterServiceInjectionKey, filterService);
 
 const filteredRoots = computed(() => {
-  if (selectedResource.value) {
-    return tracesStore.spansForResource(selectedResource.value);
-  }
-  return tracesStore.spans;
+  return tracesStore.spans.filter(span => filterService.matchesFilter(span));
 });
 
 // map Span tree to PrimeVue TreeNode[] shape
@@ -64,9 +60,11 @@ const showInspectButton = (span: Span) => {
       <div class="page__header-row">
         <h1>Traces</h1>
         <div class="page__filters">
-          <resource-selector @update:model-value="filterSpans" />
+          <resource-selector />
         </div>
       </div>
+
+      <filter-badge />
 
       <TreeTable
           :value="treeNodes"
