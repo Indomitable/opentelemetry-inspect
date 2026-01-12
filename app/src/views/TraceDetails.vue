@@ -3,7 +3,6 @@ import { useRoute } from 'vue-router';
 import {computed, ComputedRef, ref, watch} from 'vue';
 import type { TreeTableExpandedKeys, TreeTableSelectionKeys } from 'primevue/treetable';
 import type { TreeNode } from 'primevue/treenode';
-import ToggleSwitch from 'primevue/toggleswitch';
 import { useTracesStore } from '../state/traces-store';
 import { durationToString, Span } from '../domain/traces';
 import SpanDurationBar from '../components/span-duration-bar.vue';
