@@ -8,6 +8,7 @@ using OpenTelemetry.Resources;
 using Microsoft.AspNetCore.Mvc;
 using OpenTelemetry.Context.Propagation;
 using OpenTelemetry.TestingProject;
+using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +24,7 @@ builder.Services.AddOpenTelemetry()
     .WithTracing(tb =>
     {
         tb.AddSource(serviceName);
+        tb.AddHttpClientInstrumentation();
     })
     .WithLogging()
     .WithMetrics(mb =>
