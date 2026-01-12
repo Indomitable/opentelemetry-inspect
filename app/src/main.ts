@@ -35,4 +35,5 @@ app.component('Select', defineAsyncComponent(() => import('primevue/select')));
 app.component('Chart', defineAsyncComponent(() => import('primevue/chart')));
 app.component('SelectButton', defineAsyncComponent(() => import('primevue/selectbutton')));
 app.component('Slider', defineAsyncComponent(() => import('primevue/slider')));
+app.component('Chip', defineAsyncComponent(() => import('primevue/chip')));
 app.mount("#app");

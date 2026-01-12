@@ -3,12 +3,13 @@ import {Log} from "../domain/logs.ts";
 import {getSeverityType} from "../domain/logs-exensions.ts";
 import ResourceDetailsView from "./resource-details-view.vue";
 import {computed} from "vue";
+import FilterButton from "./filter-button.vue";
 
-const { log } = defineProps<{ log: Log }>();
+const props = defineProps<{ log: Log; }>();
 const emits = defineEmits<{
   (e: 'close'): void;
 }>();
-const attributes = computed(() => Object.entries(log.tags));
+const attributes = computed(() => Object.entries(props.log.tags));
 </script>
 
 <template>
@@ -24,36 +25,44 @@ const attributes = computed(() => Object.entries(log.tags));
         <div class="details-row header">
           <div>Key</div>
           <div>Value</div>
+          <div class="details-filter-col"></div>
         </div>
         <div class="details-row">
           <div>Timestamp</div>
           <div>{{ log.timestamp }}</div>
+          <filter-button :filterKey="'timestamp'" :value="log.timestamp" :title="'Filter by timestamp'" />
         </div>
         <div class="details-row">
           <div>Level</div>
           <div :class="['level', getSeverityType(log.severity)]">
             {{ log.severity }}
           </div>
+          <filter-button :filterKey="'severity'" :value="log.severity" :title="'Filter by severity'" />
         </div>
         <div class="details-row">
           <div>Scope</div>
           <div>{{ log.scope }}</div>
+          <filter-button :filterKey="'scope'" :value="log.scope" :title="'Filter by scope'" />
         </div>
         <div class="details-row">
           <div>Message</div>
           <div>{{ log.message }}</div>
+          <filter-button :filterKey="'message'" :value="log.message" :title="'Filter by message'" />
         </div>
         <div class="details-row" v-if="log.trace_id">
           <div>Trace Id</div>
           <div>{{ log.trace_id }}</div>
+          <filter-button :filterKey="'trace_id'" :value="log.trace_id" :title="'Filter by trace id'" />
         </div>
         <div class="details-row" v-if="log.span_id">
           <div>Span Id</div>
           <div>{{ log.span_id }}</div>
+          <filter-button :filterKey="'span_id'" :value="log.span_id" :title="'Filter by span id'" />
         </div>
         <div class="details-row" v-if="log.event_name">
           <div>Event Name</div>
           <div>{{ log.event_name }}</div>
+          <filter-button :filterKey="'event_name'" :value="log.event_name" :title="'Filter by event name'" />
         </div>
       </div>
 
@@ -65,10 +74,12 @@ const attributes = computed(() => Object.entries(log.tags));
         <div class="details-row header">
           <div>Key</div>
           <div>Value</div>
+          <div class="details-filter-col"></div>
         </div>
         <div v-for="[key, value] in attributes" :key="key" class="details-row">
           <div>{{ key }}</div>
           <div>{{ value }}</div>
+          <filter-button :filterKey="`tags.${key}`" :value="value" />
         </div>
       </div>
     </div>
