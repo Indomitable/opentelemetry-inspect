@@ -12,7 +12,7 @@ const metricsStore = useMetricsStore();
   <div class="summary-container">
     <div class="header-row">
       <h1>Summary</h1>
-      <span class="version-tag">v1.0.3</span>
+      <span class="version-tag">v1.1.0</span>
     </div>
     <div class="stats-grid">
       <div class="stat-card">
