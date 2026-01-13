@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, provide } from 'vue';
+import { computed, provide, ref } from 'vue';
 import {useLogsStore} from "../state/logs-store.ts";
 import {Log} from "../domain/logs.ts";
 import ResourceSelector from "../components/resource-selector.vue";
@@ -7,11 +7,20 @@ import {getSeverityType} from "../domain/logs-exensions.ts";
 import LogsDetailsView from "../components/logs-details-view.vue";
 import FilterBadge from "../components/filter-badge.vue";
 import {FilterService, filterServiceInjectionKey} from "../services/filter-service.ts";
+import {useStorage} from "../services/storage-service.ts";
 
 const filterService = new FilterService();
 provide(filterServiceInjectionKey, filterService);
 
 const logsStore = useLogsStore();
+
+const storage = useStorage();
+const logsRowsPerPageOptions = [10, 25, 50, 100];
+const logsRowsPerPage = storage.createStorageItem('logsRowsPerPage', (item) => {
+  if (!item) return 25;
+  const rows = Number(item);
+  return logsRowsPerPageOptions.includes(rows) ? rows : 25
+});
 
 const selectedLog = ref<Log | null>(null);
 
@@ -49,8 +58,8 @@ const closeDetails = () => {
         sortField="timestamp"
         :sortOrder="-1"
         paginator
-        :rows="25"
-        :rows-per-page-options="[10, 25, 50, 100]"
+        v-model:rows="logsRowsPerPage"
+        :rows-per-page-options="logsRowsPerPageOptions"
         :size="'small'"
         class="list-table"
       >

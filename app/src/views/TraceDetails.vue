@@ -11,13 +11,15 @@ import {Log} from "../domain/logs.ts";
 import SpanDetailsView from "../components/span-details-view.vue";
 import LogsDetailsView from "../components/logs-details-view.vue";
 import {sortBigIntAsc} from "../helpers/bigint-helpers.ts";
+import {useStorage} from "../services/storage-service.ts";
 
 const route = useRoute();
 const tracesStore = useTracesStore();
 const logsStore = useLogsStore();
 const traceId = route.params.traceId as string;
 const selectedKey = ref<TreeTableSelectionKeys | undefined>(undefined);
-const showLogs = ref<boolean>(false); // Default: logs hidden
+const storage = useStorage();
+const showLogs = storage.createStorageItem('traceDetailsShowLogs', false);
 
 const spansForTrace = computed(() => {
   return Object.values(tracesStore.index).filter(s => s.trace_id === traceId).sort((a, b) => sortBigIntAsc(a.start_ns, b.start_ns));

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { mount } from '@vue/test-utils';
 import LogsDetailsView from '../logs-details-view.vue';
 import type { Log } from '../../domain/logs';
@@ -28,6 +28,10 @@ describe('LogsDetailsView Component', () => {
       'custom.tag': 'tag-value'
     }
   };
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
 
   const mountComponent = () => mount(LogsDetailsView, {
     props: {

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { mount } from '@vue/test-utils';
 import ResourceDetailsView from '../resource-details-view.vue';
 import type { Resource } from '../../domain/resources';
@@ -16,6 +16,10 @@ describe('ResourceDetailsView Component', () => {
       'env': 'prod'
     }
   };
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
 
   const mountComponent = () => mount(ResourceDetailsView, {
     props: {
