@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { mount } from '@vue/test-utils';
 import SpanDetailsView from '../span-details-view.vue';
 import type { Span } from '../../domain/traces';
+import { FilterService, filterServiceInjectionKey } from '../../services/filter-service';
 
 describe('SpanDetailsView Component', () => {
   const mockSpan: Span = {
@@ -45,12 +46,19 @@ describe('SpanDetailsView Component', () => {
     children: []
   };
 
-  it('renders span details correctly', () => {
-    const wrapper = mount(SpanDetailsView, {
-      props: {
-        span: mockSpan
+  const mountComponent = () => mount(SpanDetailsView, {
+    props: {
+      span: mockSpan
+    },
+    global: {
+      provide: {
+        [filterServiceInjectionKey]: new FilterService()
       }
-    });
+    }
+  });
+
+  it('renders span details correctly', () => {
+    const wrapper = mountComponent();
 
     const text = wrapper.text();
     expect(text).toContain('Span Details');
@@ -63,11 +71,7 @@ describe('SpanDetailsView Component', () => {
   });
 
   it('renders attributes', () => {
-    const wrapper = mount(SpanDetailsView, {
-      props: {
-        span: mockSpan
-      }
-    });
+    const wrapper = mountComponent();
 
     const text = wrapper.text();
     expect(text).toContain('Attributes');
@@ -78,11 +82,7 @@ describe('SpanDetailsView Component', () => {
   });
 
   it('renders events', () => {
-    const wrapper = mount(SpanDetailsView, {
-      props: {
-        span: mockSpan
-      }
-    });
+    const wrapper = mountComponent();
 
     const text = wrapper.text();
     expect(text).toContain('Events');
@@ -92,22 +92,14 @@ describe('SpanDetailsView Component', () => {
   });
 
   it('renders resource info via ResourceDetailsView', () => {
-    const wrapper = mount(SpanDetailsView, {
-      props: {
-        span: mockSpan
-      }
-    });
+    const wrapper = mountComponent();
 
     expect(wrapper.text()).toContain('Resource Info');
     expect(wrapper.text()).toContain('test-service');
   });
 
   it('emits close event when close button is clicked', async () => {
-    const wrapper = mount(SpanDetailsView, {
-      props: {
-        span: mockSpan
-      }
-    });
+    const wrapper = mountComponent();
 
     const closeBtn = wrapper.find('.close-btn');
     await closeBtn.trigger('click');

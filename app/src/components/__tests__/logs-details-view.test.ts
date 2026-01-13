@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { mount } from '@vue/test-utils';
 import LogsDetailsView from '../logs-details-view.vue';
 import type { Log } from '../../domain/logs';
+import { FilterService, filterServiceInjectionKey } from '../../services/filter-service';
 
 describe('LogsDetailsView Component', () => {
   const mockLog: Log = {
@@ -28,12 +29,19 @@ describe('LogsDetailsView Component', () => {
     }
   };
 
-  it('renders log details correctly', () => {
-    const wrapper = mount(LogsDetailsView, {
-      props: {
-        log: mockLog
+  const mountComponent = () => mount(LogsDetailsView, {
+    props: {
+      log: mockLog
+    },
+    global: {
+      provide: {
+        [filterServiceInjectionKey]: new FilterService()
       }
-    });
+    }
+  });
+
+  it('renders log details correctly', () => {
+    const wrapper = mountComponent();
 
     const text = wrapper.text();
     expect(text).toContain('Log Details');
@@ -46,11 +54,7 @@ describe('LogsDetailsView Component', () => {
   });
 
   it('renders attributes', () => {
-    const wrapper = mount(LogsDetailsView, {
-      props: {
-        log: mockLog
-      }
-    });
+    const wrapper = mountComponent();
 
     const text = wrapper.text();
     expect(text).toContain('Attributes');
@@ -59,22 +63,14 @@ describe('LogsDetailsView Component', () => {
   });
 
   it('renders resource info', () => {
-    const wrapper = mount(LogsDetailsView, {
-      props: {
-        log: mockLog
-      }
-    });
+    const wrapper = mountComponent();
 
     expect(wrapper.text()).toContain('Resource Info');
     expect(wrapper.text()).toContain('test-service');
   });
 
   it('emits close event when close button is clicked', async () => {
-    const wrapper = mount(LogsDetailsView, {
-      props: {
-        log: mockLog
-      }
-    });
+    const wrapper = mountComponent();
 
     const closeBtn = wrapper.find('.close-btn');
     await closeBtn.trigger('click');
