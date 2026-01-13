@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import {computed, ref, watch} from "vue";
+import {computed, provide, ref, watch} from "vue";
 import {useMetricsStore} from "../state/metrics-store.ts";
 import ResourceSelector from "../components/resource-selector.vue";
 import {Metric} from "../domain/metrics.ts";
 import {getChartData, getTableData} from "../viewmodels/metrics-view-model.ts";
 import {Resource} from "../domain/resources.ts";
 import {formatAdaptive} from "../helpers/number-helpers.ts";
+import {FilterService, filterServiceInjectionKey} from "../services/filter-service.ts";
+
+const filterService = new FilterService();
+provide(filterServiceInjectionKey, filterService);
 
 const metricsStore = useMetricsStore();
 const selectedResource = ref<Resource|null>(null);
