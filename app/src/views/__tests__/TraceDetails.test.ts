@@ -10,6 +10,7 @@ import PrimeVue from 'primevue/config';
 import TreeTable from 'primevue/treetable';
 import Column from 'primevue/column';
 import ToggleSwitch from 'primevue/toggleswitch';
+import { FilterService, filterServiceInjectionKey } from '../../services/filter-service';
 
 // Mock vue-router useRoute before imports
 vi.mock('vue-router', async () => {
@@ -99,6 +100,9 @@ describe('TraceDetails View', () => {
           TreeTable,
           Column,
           ToggleSwitch
+        },
+        provide: {
+          [filterServiceInjectionKey]: new FilterService()
         }
       }
     });

@@ -19,8 +19,8 @@ const selectedResourceKey = computed({
     if (newKey === ALL_RESOURCES_KEY) {
       filterService.filterByResource(null);
     } else {
-      const resource = resourceStore.resources.find(r => r.key === newKey);
-      filterService.filterByResource(resource ?? null);
+      const resource = resourceStore.resources.find(r => r.key === newKey) ?? null;
+      filterService.filterByResource(resource);
     }
   }
 });

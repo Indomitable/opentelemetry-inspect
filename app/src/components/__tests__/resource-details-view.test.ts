@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { mount } from '@vue/test-utils';
 import ResourceDetailsView from '../resource-details-view.vue';
 import type { Resource } from '../../domain/resources';
+import { FilterService, filterServiceInjectionKey } from '../../services/filter-service';
 
 describe('ResourceDetailsView Component', () => {
   const mockResource: Resource = {
@@ -16,12 +17,19 @@ describe('ResourceDetailsView Component', () => {
     }
   };
 
-  it('renders standard resource fields', () => {
-    const wrapper = mount(ResourceDetailsView, {
-      props: {
-        resource: mockResource
+  const mountComponent = () => mount(ResourceDetailsView, {
+    props: {
+      resource: mockResource
+    },
+    global: {
+      provide: {
+        [filterServiceInjectionKey]: new FilterService()
       }
-    });
+    }
+  });
+
+  it('renders standard resource fields', () => {
+    const wrapper = mountComponent();
 
     const text = wrapper.text();
     expect(text).toContain('test-service');
@@ -31,11 +39,7 @@ describe('ResourceDetailsView Component', () => {
   });
 
   it('renders custom attributes', () => {
-    const wrapper = mount(ResourceDetailsView, {
-      props: {
-        resource: mockResource
-      }
-    });
+    const wrapper = mountComponent();
 
     const text = wrapper.text();
     expect(text).toContain('custom.attr');
@@ -45,11 +49,7 @@ describe('ResourceDetailsView Component', () => {
   });
 
   it('renders table headers', () => {
-    const wrapper = mount(ResourceDetailsView, {
-      props: {
-        resource: mockResource
-      }
-    });
+    const wrapper = mountComponent();
 
     const header = wrapper.find('.details-row.header');
     expect(header.exists()).toBe(true);

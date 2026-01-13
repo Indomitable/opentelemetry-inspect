@@ -42,11 +42,18 @@ const rootSpans = computed(() => {
 
 // Calculate trace-wide min start and max end times across all spans and (optionally) logs
 const traceTimeRange = computed(() => {
-  let minStart = spansForTrace.value[spansForTrace.value.length - 1].end_ns;
-  let maxEnd = 0n;
+  const spans = spansForTrace.value;
+  const logs = logsForTrace.value;
+
+  if (spans.length === 0 && logs.length === 0) {
+    return { start: 0n, end: 0n };
+  }
+
+  let minStart = spans.length > 0 ? spans[0].start_ns : logs[0].time_ns;
+  let maxEnd = spans.length > 0 ? spans[0].end_ns : logs[0].time_ns + 1n;
 
   // Check all spans
-  for (const span of spansForTrace.value) {
+  for (const span of spans) {
     if (span.start_ns < minStart) {
       minStart = span.start_ns;
     }
@@ -56,7 +63,7 @@ const traceTimeRange = computed(() => {
   }
 
   // Check all logs
-  for (const log of logsForTrace.value) {
+  for (const log of logs) {
     if (log.time_ns < minStart) {
       minStart = log.time_ns;
     }

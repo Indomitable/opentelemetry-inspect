@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import ResourceSelector from '../resource-selector.vue';
 import { useResourceStore } from '../../state/resource-store';
 import type { Resource } from '../../domain/resources';
+import { FilterService, filterServiceInjectionKey } from '../../services/filter-service';
 import PrimeVue from 'primevue/config';
 import Select from 'primevue/select';
 
@@ -36,15 +37,17 @@ describe('ResourceSelector Component', () => {
         plugins: [PrimeVue],
         components: {
           Select
+        },
+        provide: {
+          [filterServiceInjectionKey]: new FilterService()
         }
       }
     });
   };
 
-  it('emits null on mount', () => {
+  it('renders without emitting on mount', () => {
     const wrapper = mountComponent();
-    expect(wrapper.emitted('update:model-value')).toBeTruthy();
-    expect(wrapper.emitted('update:model-value')![0]).toEqual([null]);
+    expect(wrapper.emitted()).toEqual({});
   });
 
   it('provides all resources option and store resources', () => {
@@ -61,35 +64,57 @@ describe('ResourceSelector Component', () => {
     expect(options[2]).toEqual({ label: 'service-b (2.0.0)', value: 'service-b|2.0.0' });
   });
 
-  it('emits selected resource when changed', async () => {
+  it('filters selected resource when changed', async () => {
     const resourceStore = useResourceStore();
     resourceStore.resources = [mockResource1, mockResource2];
 
-    const wrapper = mountComponent();
+    const filterService = new FilterService();
+    const wrapper = mount(ResourceSelector, {
+      global: {
+        plugins: [PrimeVue],
+        components: {
+          Select
+        },
+        provide: {
+          [filterServiceInjectionKey]: filterService
+        }
+      }
+    });
+
     const select = wrapper.findComponent(Select);
 
     // Simulate selecting service-a
-    select.vm.$emit('update:model-value', 'service-a|1.0.0');
+    select.vm.$emit('update:modelValue', 'service-a|1.0.0');
 
-    const emissions = wrapper.emitted('update:model-value');
-    expect(emissions).toBeTruthy();
-    // Index 0 is initial null, Index 1 is the change
-    expect(emissions![1]).toEqual([mockResource1]);
+    expect(filterService.hasFilter('resource.key')).toBe(true);
+    expect(filterService.selectedResourceForDropdown).toEqual(mockResource1);
   });
 
-  it('emits null when All Resources is selected', async () => {
+  it('clears filter when All Resources is selected', async () => {
     const resourceStore = useResourceStore();
     resourceStore.resources = [mockResource1];
 
-    const wrapper = mountComponent();
+    const filterService = new FilterService();
+    const wrapper = mount(ResourceSelector, {
+      global: {
+        plugins: [PrimeVue],
+        components: {
+          Select
+        },
+        provide: {
+          [filterServiceInjectionKey]: filterService
+        }
+      }
+    });
+
     const select = wrapper.findComponent(Select);
 
     // First select something
-    select.vm.$emit('update:model-value', 'service-a|1.0.0');
+    select.vm.$emit('update:modelValue', 'service-a|1.0.0');
     // Then select All Resources
-    select.vm.$emit('update:model-value', '-');
+    select.vm.$emit('update:modelValue', '-');
 
-    const emissions = wrapper.emitted('update:model-value');
-    expect(emissions![2]).toEqual([null]);
+    expect(filterService.hasFilter('resource.key')).toBe(false);
+    expect(filterService.selectedResourceForDropdown).toBeNull();
   });
 });
