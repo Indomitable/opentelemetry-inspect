@@ -152,6 +152,7 @@ const showInspectButton = (span: Span) => {
           :rows-per-page-options="[10, 25, 50, 100]"
           :size="'small'"
           class="list-table">
+        <template #empty><div class="list-table__empty">No spans recorded.</div></template>
         <Column field="name" header="Name" :style="{ width: '150px' }" />
         <Column field="scope" header="Scope" :style="{ width: '150px' }" />
         <Column header="Duration" :style="{ width: '120px' }">
