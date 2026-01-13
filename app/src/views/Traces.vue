@@ -3,18 +3,25 @@ import type {TreeTableSelectionKeys} from "primevue/treetable";
 import ResourceSelector from "../components/resource-selector.vue";
 import {useTracesStore} from "../state/traces-store.ts";
 import {durationToString, Span} from "../domain/traces.ts";
-import {computed, provide, ref, watch} from "vue";
+import {computed, provide, ref} from "vue";
 import type {TreeNode} from "primevue/treenode";
 import SpanDetailsView from "../components/span-details-view.vue";
 import FilterBadge from "../components/filter-badge.vue";
 import {FilterService, filterServiceInjectionKey} from "../services/filter-service.ts";
 import {sortBigIntDesc} from "../helpers/bigint-helpers.ts";
+import {useStorage} from "../services/storage-service.ts";
 
 const tracesStore = useTracesStore();
 const selectedKey = ref<TreeTableSelectionKeys | undefined>(undefined);
-const showFlatList = ref<boolean>(localStorage.getItem('tracesShowFlatList') === 'true');
-watch(showFlatList, (v) => {
-  localStorage.setItem('tracesShowFlatList', v ? 'true' : 'false');
+const storage = useStorage();
+const showFlatList = storage.createStorageItem('tracesShowFlatList', false);
+const tracesRowsPerPageOptions = [10, 25, 50, 100];
+const tracesRowsPerPage = storage.createStorageItem('tracesRowsPerPage', (item) => {
+  if (!item) {
+    return 25;
+  }
+  const rows = Number(item);
+  return tracesRowsPerPageOptions.includes(rows) ? rows : 25;
 });
 
 const filterService = new FilterService();
@@ -111,8 +118,8 @@ const showInspectButton = (span: Span) => {
           column-resize-mode="fit"
           :size="'small'"
           paginator
-          :rows="25"
-          :rows-per-page-options="[10, 25, 50, 100]"
+          v-model:rows="tracesRowsPerPage"
+          :rows-per-page-options="tracesRowsPerPageOptions"
           class="list-table"
       >
         <template #empty><div class="list-table__empty">No spans recorded.</div></template>
@@ -148,8 +155,8 @@ const showInspectButton = (span: Span) => {
           sortField="timestamp"
           :sortOrder="-1"
           paginator
-          :rows="25"
-          :rows-per-page-options="[10, 25, 50, 100]"
+          v-model:rows="tracesRowsPerPage"
+          :rows-per-page-options="tracesRowsPerPageOptions"
           :size="'small'"
           class="list-table">
         <template #empty><div class="list-table__empty">No spans recorded.</div></template>

@@ -19,6 +19,7 @@
 - Before implementing changes, create a branch off `main` and ensure it is up to date.
 - Implement the feature or fix, then commit with clean messages using prefixes like `feat`, `fix`, `chore`, etc.
 - Add unit tests for newly added code; focus on covering new behavior without excessive tests.
+- If there are modified files in the repository, do not revert them. Ask whether to stash, commit, or revert (in that order).
 
 ## Build Instructions
 - Install dependencies with `bun install` from the repository root.

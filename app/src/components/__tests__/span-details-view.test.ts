@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { mount } from '@vue/test-utils';
 import SpanDetailsView from '../span-details-view.vue';
 import type { Span } from '../../domain/traces';
@@ -45,6 +45,10 @@ describe('SpanDetailsView Component', () => {
     links: [],
     children: []
   };
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
 
   const mountComponent = () => mount(SpanDetailsView, {
     props: {

@@ -88,6 +88,7 @@ describe('TraceDetails View', () => {
   let pinia: ReturnType<typeof createPinia>;
 
   beforeEach(() => {
+    localStorage.clear();
     pinia = createPinia();
     setActivePinia(pinia);
   });
