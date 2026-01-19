@@ -39,7 +39,7 @@ describe('ResourceSelector Component', () => {
           Select
         },
         provide: {
-          [filterServiceInjectionKey]: new FilterService()
+          [filterServiceInjectionKey]: new FilterService("test")
         }
       }
     });
@@ -68,7 +68,7 @@ describe('ResourceSelector Component', () => {
     const resourceStore = useResourceStore();
     resourceStore.resources = [mockResource1, mockResource2];
 
-    const filterService = new FilterService();
+    const filterService = new FilterService("test");
     const wrapper = mount(ResourceSelector, {
       global: {
         plugins: [PrimeVue],
@@ -87,14 +87,14 @@ describe('ResourceSelector Component', () => {
     select.vm.$emit('update:modelValue', 'service-a|1.0.0');
 
     expect(filterService.hasFilter('resource.key')).toBe(true);
-    expect(filterService.selectedResourceForDropdown).toEqual(mockResource1);
+    expect(filterService.selectedResourceKey).toEqual(mockResource1.key);
   });
 
   it('clears filter when All Resources is selected', async () => {
     const resourceStore = useResourceStore();
     resourceStore.resources = [mockResource1];
 
-    const filterService = new FilterService();
+    const filterService = new FilterService("test");
     const wrapper = mount(ResourceSelector, {
       global: {
         plugins: [PrimeVue],
@@ -115,6 +115,6 @@ describe('ResourceSelector Component', () => {
     select.vm.$emit('update:modelValue', '-');
 
     expect(filterService.hasFilter('resource.key')).toBe(false);
-    expect(filterService.selectedResourceForDropdown).toBeNull();
+    expect(filterService.selectedResourceKey).toBeNull();
   });
 });

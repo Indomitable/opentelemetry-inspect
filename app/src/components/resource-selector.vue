@@ -10,10 +10,7 @@ const resourceStore = useResourceStore();
 
 const selectedResourceKey = computed({
   get: () => {
-    if (!filterService.hasFilter('resource.key')) {
-      return ALL_RESOURCES_KEY;
-    }
-    return filterService.selectedResourceForDropdown?.key;
+    return filterService.selectedResourceKey ?? ALL_RESOURCES_KEY;
   },
   set: (newKey: string) => {
     if (newKey === ALL_RESOURCES_KEY) {

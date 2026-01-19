@@ -103,7 +103,7 @@ describe('TraceDetails View', () => {
           ToggleSwitch
         },
         provide: {
-          [filterServiceInjectionKey]: new FilterService()
+          [filterServiceInjectionKey]: new FilterService("test")
         }
       }
     });

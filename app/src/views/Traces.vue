@@ -6,14 +6,14 @@ import {durationToString, Span} from "../domain/traces.ts";
 import {computed, provide, ref} from "vue";
 import type {TreeNode} from "primevue/treenode";
 import SpanDetailsView from "../components/span-details-view.vue";
-import FilterBadge from "../components/filter-badge.vue";
+import FiltersComponent from "../components/filters-component.vue";
 import {FilterService, filterServiceInjectionKey} from "../services/filter-service.ts";
 import {sortBigIntDesc} from "../helpers/bigint-helpers.ts";
-import {useStorage} from "../services/storage-service.ts";
+import {StorageService} from "../services/storage-service.ts";
 
 const tracesStore = useTracesStore();
 const selectedKey = ref<TreeTableSelectionKeys | undefined>(undefined);
-const storage = useStorage();
+const storage = new StorageService();
 const showFlatList = storage.createStorageItem('tracesShowFlatList', false);
 const tracesRowsPerPageOptions = [10, 25, 50, 100];
 const tracesRowsPerPage = storage.createStorageItem('tracesRowsPerPage', (item) => {
@@ -24,7 +24,7 @@ const tracesRowsPerPage = storage.createStorageItem('tracesRowsPerPage', (item) 
   return tracesRowsPerPageOptions.includes(rows) ? rows : 25;
 });
 
-const filterService = new FilterService();
+const filterService = new FilterService("traces");
 provide(filterServiceInjectionKey, filterService);
 
 const filteredRoots = computed(() => {
@@ -105,7 +105,7 @@ const showInspectButton = (span: Span) => {
         </div>
       </div>
 
-      <filter-badge />
+      <filters-component />
 
       <TreeTable
           v-if="!showFlatList"

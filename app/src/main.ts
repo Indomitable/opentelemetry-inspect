@@ -14,6 +14,7 @@ import './styles/variables.css';
 import './styles/details-table.css';
 import './styles/page.css';
 import './styles/list-table.css';
+import {Tooltip} from "primevue";
 
 
 const app = createApp(App);
@@ -37,4 +38,5 @@ app.component('SelectButton', defineAsyncComponent(() => import('primevue/select
 app.component('Slider', defineAsyncComponent(() => import('primevue/slider')));
 app.component('Chip', defineAsyncComponent(() => import('primevue/chip')));
 app.component('ToggleSwitch', defineAsyncComponent(() => import('primevue/toggleswitch')));
+app.directive('tooltip', Tooltip);
 app.mount("#app");
