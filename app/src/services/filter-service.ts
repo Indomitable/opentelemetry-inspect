@@ -7,8 +7,8 @@ export const ResourceFilterKey = 'resource.key';
 export class FilterService {
     private readonly filters = ref<Record<string, string>>({});
     private readonly selectedResource = ref<Resource|null>(null);
-    private readonly storage = new StorageService();
-    constructor(private readonly prefix: string) {
+    constructor(private readonly prefix: string,
+                private readonly storage: StorageService = new StorageService()) {
         for (const [key, value] of this.storage.iterate(prefix)) {
             this.addFilter(key, value);
         }
@@ -27,6 +27,13 @@ export class FilterService {
         this.storage.remove(`${this.prefix}-filter-${key}`);
     }
 
+    clearAllFilters() {
+        const keys = Object.keys(this.filters.value);
+        for (const key of keys) {
+            this.removeFilter(key);
+        }
+    }
+
     hasFilter(key: string) {
         return this.filters.value[key] !== undefined;
     }
@@ -39,15 +46,25 @@ export class FilterService {
         for (const [key, value] of Object.entries(this.filters.value)) {
             const keyParts = key.split('.');
             let item = obj as Record<string, any> as any;
+            let found = true;
+
             for (const part of keyParts) {
-                if (!(part in item)) return false;
+                if (!(part in item)) {
+                    found = false;
+                    break;
+                }
                 item = item[part];
             }
-            if (item == value) {
-                return true;
+
+            if (!found) {
+                continue;
+            }
+
+            if (item !== value) {
+                return false;
             }
         }
-        return false;
+        return true;
     }
 
     filterByResource(resource: Resource|null) {

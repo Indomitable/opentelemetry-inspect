@@ -6,7 +6,7 @@ import {durationToString, Span} from "../domain/traces.ts";
 import {computed, provide, ref} from "vue";
 import type {TreeNode} from "primevue/treenode";
 import SpanDetailsView from "../components/span-details-view.vue";
-import FilterBadge from "../components/filter-badge.vue";
+import FiltersComponent from "../components/filters-component.vue";
 import {FilterService, filterServiceInjectionKey} from "../services/filter-service.ts";
 import {sortBigIntDesc} from "../helpers/bigint-helpers.ts";
 import {StorageService} from "../services/storage-service.ts";
@@ -105,7 +105,7 @@ const showInspectButton = (span: Span) => {
         </div>
       </div>
 
-      <filter-badge />
+      <filters-component />
 
       <TreeTable
           v-if="!showFlatList"

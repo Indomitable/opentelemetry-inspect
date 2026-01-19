@@ -5,7 +5,7 @@ import {Log} from "../domain/logs.ts";
 import ResourceSelector from "../components/resource-selector.vue";
 import {getSeverityType} from "../domain/logs-exensions.ts";
 import LogsDetailsView from "../components/logs-details-view.vue";
-import FilterBadge from "../components/filter-badge.vue";
+import FiltersComponent from "../components/filters-component.vue";
 import {FilterService, filterServiceInjectionKey} from "../services/filter-service.ts";
 import {StorageService} from "../services/storage-service.ts";
 
@@ -44,7 +44,7 @@ const closeDetails = () => {
         </div>
       </div>
       
-      <filter-badge />
+      <filters-component />
 
       <DataTable
         v-model:selection="selectedLog" 
