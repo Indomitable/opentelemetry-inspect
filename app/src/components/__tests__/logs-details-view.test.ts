@@ -39,7 +39,7 @@ describe('LogsDetailsView Component', () => {
     },
     global: {
       provide: {
-        [filterServiceInjectionKey]: new FilterService()
+        [filterServiceInjectionKey]: new FilterService("test")
       }
     }
   });

@@ -1,19 +1,30 @@
 import {InjectionKey, ref} from "vue";
 import {Resource} from "../domain/resources.ts";
+import {StorageService} from "./storage-service.ts";
+
+export const ResourceFilterKey = 'resource.key';
 
 export class FilterService {
     private readonly filters = ref<Record<string, string>>({});
     private readonly selectedResource = ref<Resource|null>(null);
+    private readonly storage = new StorageService();
+    constructor(private readonly prefix: string) {
+        for (const [key, value] of this.storage.iterate(prefix)) {
+            this.addFilter(key, value);
+        }
+    }
 
     addFilter(key: string, value: string) {
         this.filters.value[key] = value;
+        this.storage.write(`${this.prefix}-filter-${key}`, value);
     }
 
     removeFilter(key: string) {
-        if (key === 'resource.key') {
+        if (key === ResourceFilterKey) {
             this.selectedResource.value = null;
         }
         delete this.filters.value[key];
+        this.storage.remove(`${this.prefix}-filter-${key}`);
     }
 
     hasFilter(key: string) {
@@ -42,9 +53,9 @@ export class FilterService {
     filterByResource(resource: Resource|null) {
         this.selectedResource.value = resource;
         if (resource) {
-            this.addFilter('resource.key', resource.key);
+            this.addFilter(ResourceFilterKey, resource.key);
         } else {
-            this.removeFilter('resource.key');
+            this.removeFilter(ResourceFilterKey);
         }
     }
 
@@ -52,12 +63,12 @@ export class FilterService {
         return Object.entries(this.filters.value).map(([key, value]) => ({
             key,
             value,
-            display: key === 'resource.key' ? 'resource' : key
+            display: key === ResourceFilterKey ? 'resource' : key
         }));
     }
 
-    get selectedResourceForDropdown(): Resource|null {
-        return this.selectedResource.value;
+    get selectedResourceKey(): string|null {
+        return this.filters.value[ResourceFilterKey] ?? null;
     }
 }
 

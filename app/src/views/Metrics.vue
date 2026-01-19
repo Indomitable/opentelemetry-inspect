@@ -8,7 +8,7 @@ import {Resource} from "../domain/resources.ts";
 import {formatAdaptive} from "../helpers/number-helpers.ts";
 import {FilterService, filterServiceInjectionKey} from "../services/filter-service.ts";
 
-const filterService = new FilterService();
+const filterService = new FilterService("metrics");
 provide(filterServiceInjectionKey, filterService);
 
 const metricsStore = useMetricsStore();

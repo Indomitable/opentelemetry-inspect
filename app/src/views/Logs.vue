@@ -7,14 +7,14 @@ import {getSeverityType} from "../domain/logs-exensions.ts";
 import LogsDetailsView from "../components/logs-details-view.vue";
 import FilterBadge from "../components/filter-badge.vue";
 import {FilterService, filterServiceInjectionKey} from "../services/filter-service.ts";
-import {useStorage} from "../services/storage-service.ts";
+import {StorageService} from "../services/storage-service.ts";
 
-const filterService = new FilterService();
+const filterService = new FilterService("logs");
 provide(filterServiceInjectionKey, filterService);
 
 const logsStore = useLogsStore();
 
-const storage = useStorage();
+const storage = new StorageService();
 const logsRowsPerPageOptions = [10, 25, 50, 100];
 const logsRowsPerPage = storage.createStorageItem('logsRowsPerPage', (item) => {
   if (!item) return 25;
