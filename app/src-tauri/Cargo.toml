@@ -1,6 +1,6 @@
 [package]
 name = "opentelemetry-inspect"
-version = "1.1.0"
+version = "1.2.0"
 description = "OpenTelemetry Inspector: View Logs, Traces and Metrics"
 authors = ["indomitable"]
 edition = "2021"
